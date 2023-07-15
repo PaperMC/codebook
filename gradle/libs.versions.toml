@@ -1,0 +1,38 @@
+[versions]
+palantir = "2.33.0"
+slf4j = "2.0.7"
+lorenz = "0.5.7"
+unpick = "2.3.0"
+
+[plugins]
+spotless = "com.diffplug.spotless:6.19.0"
+licenser = "org.cadixdev.licenser:0.6.1"
+shadow = "com.github.johnrengelman.shadow:8.1.1"
+
+[libraries]
+checker = "org.checkerframework:checker-qual:3.36.0"
+picocli = "info.picocli:picocli:4.7.4"
+slf4j = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+slf4j-jul = { module = "org.slf4j:jul-to-slf4j", version.ref = "slf4j" }
+logback = "ch.qos.logback:logback-classic:1.4.8"
+sysoutOverSlf4j = "uk.org.lidalia:sysout-over-slf4j:1.0.2"
+
+gson = "com.google.code.gson:gson:2.10.1"
+bytes = "at.favre.lib:bytes:1.6.1"
+lorenz = { module = "org.cadixdev:lorenz", version.ref = "lorenz" }
+lorenz-proguard = { module = "org.cadixdev:lorenz-io-proguard", version.ref = "lorenz" }
+
+lorenz-tiny = "net.fabricmc:lorenz-tiny:4.0.0"
+unpick-format = { module = "net.fabricmc.unpick:unpick-format-utils", version.ref = "unpick" }
+unpick-cli = { module = "net.fabricmc.unpick:unpick-cli", version.ref = "unpick" }
+
+hypo-platform = "dev.denwav.hypo:hypo-platform:1.2.5"
+hypo-model = { module = "dev.denwav.hypo:hypo-model" }
+hypo-core = { module = "dev.denwav.hypo:hypo-core" }
+hypo-asm = { module = "dev.denwav.hypo:hypo-asm" }
+hypo-hydrate = { module = "dev.denwav.hypo:hypo-hydrate" }
+hypo-asm-hydrate = { module = "dev.denwav.hypo:hypo-asm-hydrate" }
+hypo-mappings = { module = "dev.denwav.hypo:hypo-mappings" }
+
+[bundles]
+hypo = ["hypo-model", "hypo-core", "hypo-asm", "hypo-hydrate", "hypo-asm-hydrate", "hypo-mappings"]
