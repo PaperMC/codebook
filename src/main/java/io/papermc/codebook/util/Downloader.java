@@ -43,7 +43,7 @@ public final class Downloader {
 
     private Downloader() {}
 
-    public static URI getDownloadUri(final String mavenCoords) {
+    public static URI getDownloadUri(final String mavenBaseUrl, final String mavenCoords) {
         final int extensionIndex = mavenCoords.indexOf('@');
 
         final String coords;
@@ -58,7 +58,10 @@ public final class Downloader {
             throw new UserErrorException("Invalid Maven coordinates: " + mavenCoords);
         }
 
-        final var sb = new StringBuilder(FABRIC_MAVEN);
+        final var sb = new StringBuilder(mavenBaseUrl);
+        if (!mavenBaseUrl.endsWith("/")) {
+            sb.append('/');
+        }
         sb.append(parts[0].replace('.', '/')).append('/');
         sb.append(parts[1]).append('/');
         sb.append(parts[2]).append('/');
@@ -104,6 +107,11 @@ public final class Downloader {
         try {
             final HttpResponse<Path> response = client.send(request, HttpResponse.BodyHandlers.ofFile(targetFile));
             file = response.body();
+
+            if (response.statusCode() < 200 || response.statusCode() > 299) {
+                throw new UnexpectedException(
+                        "Failed to download file from " + uri + " - status code: " + response.statusCode());
+            }
         } catch (final IOException | InterruptedException e) {
             throw new UnexpectedException("Failed to download file from " + uri, e);
         }

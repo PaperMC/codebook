@@ -31,6 +31,7 @@ import io.papermc.codebook.config.CodeBookResource;
 import io.papermc.codebook.config.CodeBookUriResource;
 import io.papermc.codebook.config.CodeBookVersionInput;
 import io.papermc.codebook.exceptions.UserErrorException;
+import io.papermc.codebook.util.Downloader;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -207,6 +208,15 @@ public final class Main implements Callable<Integer> {
         private @Nullable List<Path> inputClasspath;
     }
 
+    @CommandLine.Option(
+            names = "--maven-base-url",
+            paramLabel = "url",
+            description = "Provide a different Maven URL to resolve all Maven coordinates (params, remapper, etc). "
+                    + "It should be the base URL so the Maven artifact path can be appended to it. "
+                    + "The default value when not provided is ${DEFAULT-VALUE}.",
+            defaultValue = Downloader.FABRIC_MAVEN)
+    private String mavenBaseUrl;
+
     public Main() {}
 
     public static void main(final String[] args) {
@@ -324,7 +334,14 @@ public final class Main implements Callable<Integer> {
                 c -> new Coords(c.constantsCoords, "constants", null));
 
         return new CodeBookContext(
-                remapper, mappings, paramMappings, constantJar, this.outputJar, this.forceWrite, input);
+                this.mavenBaseUrl,
+                remapper,
+                mappings,
+                paramMappings,
+                constantJar,
+                this.outputJar,
+                this.forceWrite,
+                input);
     }
 
     private <T> @Nullable CodeBookResource getResource(
@@ -350,7 +367,8 @@ public final class Main implements Callable<Integer> {
         if (resourceCoords != null) {
             final Coords coords = resourceCoords.apply(resource);
             if (coords.coords != null) {
-                return new CodeBookCoordsResource(coords.coords, coords.classifier, coords.extension);
+                return new CodeBookCoordsResource(
+                        coords.coords, coords.classifier, coords.extension, this.mavenBaseUrl);
             }
         }
 

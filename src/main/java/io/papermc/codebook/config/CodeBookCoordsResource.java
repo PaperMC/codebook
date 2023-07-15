@@ -28,13 +28,14 @@ import java.net.URI;
 import java.nio.file.Path;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public record CodeBookCoordsResource(String coords, @Nullable String classifier, @Nullable String extension)
+public record CodeBookCoordsResource(
+        String coords, @Nullable String classifier, @Nullable String extension, String mavenBaseUrl)
         implements CodeBookResource {
 
     @Override
     public Path resolveResourceFile(final Path tempDir) {
         this.verifyMavenCoords(this.coords);
-        final URI uri = Downloader.getDownloadUri(this.getFullCoords());
+        final URI uri = Downloader.getDownloadUri(this.mavenBaseUrl, this.getFullCoords());
 
         final String[] parts = this.coords.split(":");
         final var sb = new StringBuilder();

@@ -148,6 +148,7 @@ public final class CodeBook {
     }
 
     private Path downloadConstantsJar(final CodeBookCoordsResource coords, final Path tempDir) {
-        return new CodeBookCoordsResource(coords.coords(), "constants", null).resolveResourceFile(tempDir);
+        return new CodeBookCoordsResource(coords.coords(), "constants", null, this.ctx.mavenBaseUrl())
+                .resolveResourceFile(tempDir);
     }
 }
