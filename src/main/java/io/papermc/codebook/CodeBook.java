@@ -81,9 +81,10 @@ public final class CodeBook {
         final MappingSet merged =
                 new InspectJarPage(extractedJar, extractPage.getLibraries(), initialMerged, tempDir).inspect();
 
-        final Path remapped = new RemapJarPage(
-                        this.ctx.remapperJar(), extractedJar, extractPage.getLibraries(), tempDir, merged)
-                .remap();
+        final Path remapperJar = this.ctx.remapperJar().resolveResourceFile(tempDir);
+
+        final Path remapped =
+                new RemapJarPage(remapperJar, extractedJar, extractPage.getLibraries(), tempDir, merged).remap();
 
         final @Nullable Path inputConstantsJar;
         if (this.ctx.constantsJar() != null) {

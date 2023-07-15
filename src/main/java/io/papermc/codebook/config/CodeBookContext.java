@@ -26,7 +26,7 @@ import java.nio.file.Path;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public record CodeBookContext(
-        Path remapperJar,
+        CodeBookResource remapperJar,
         @Nullable CodeBookResource mappings,
         @Nullable CodeBookResource paramMappings,
         @Nullable CodeBookResource constantsJar,

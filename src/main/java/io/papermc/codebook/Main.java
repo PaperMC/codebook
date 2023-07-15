@@ -57,12 +57,33 @@ import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J;
         usageHelpAutoWidth = true)
 public final class Main implements Callable<Integer> {
 
-    @CommandLine.Option(
-            names = {"-r", "--remapper"},
-            required = true,
-            paramLabel = "<tiny-remapper-jar>",
-            description = "The executable tiny-remapper jar to use for the remapping process.")
-    private Path remapper;
+    @CommandLine.ArgGroup(
+            multiplicity = "1",
+            heading = "%n%nThe remapper must be an executable tiny-remapper jar. "
+                    + "This is the 'fat' classifier when downloading from Maven. It can be provided several different ways, the simplest being to just "
+                    + "specify the Maven coordinates (with no classifier).%n")
+    private RemapperOptions remapper;
+
+    static final class RemapperOptions {
+        @CommandLine.Option(
+                names = {"-r", "--remapper-coords"},
+                paramLabel = "<tiny-remapper-coords>",
+                description =
+                        "The Maven coordinates for the executable tiny-remapper jar to use for the remapping process.")
+        private @Nullable String remapperCoords;
+
+        @CommandLine.Option(
+                names = {"--remapper-file"},
+                paramLabel = "<tiny-remapper-file>",
+                description = "The executable tiny-remapper jar to use for the remapping process.")
+        private @Nullable Path remapperFile;
+
+        @CommandLine.Option(
+                names = "--remapper-uri",
+                paramLabel = "<tiny-remapper-uri>",
+                description = "A download URL for the executable tiny-remapper jar to use for the remapping process.")
+        private @Nullable URI remapperUri;
+    }
 
     @CommandLine.ArgGroup(
             heading =
@@ -234,7 +255,9 @@ public final class Main implements Callable<Integer> {
     }
 
     private CodeBookContext createContext() {
-        this.verifyJarFile("Remapper", this.remapper);
+        if (this.remapper.remapperFile != null) {
+            this.verifyJarFile("Remapper", this.remapper.remapperFile);
+        }
 
         if (this.inputs.inputFile != null) {
             this.verifyJarFile("Input", this.inputs.inputFile.inputJar);
@@ -274,6 +297,16 @@ public final class Main implements Callable<Integer> {
             input = new CodeBookJarInput(this.inputs.inputFile.inputJar, classpath);
         }
 
+        final @Nullable CodeBookResource remapper = this.getResource(
+                "tiny-remapper.jar",
+                this.remapper,
+                r -> r.remapperFile,
+                r -> r.remapperUri,
+                r -> new Coords(r.remapperCoords, "fat", null));
+        if (remapper == null) {
+            throw new UserErrorException("No remapper provided");
+        }
+
         final @Nullable CodeBookResource mappings =
                 this.getResource("server_mappings.txt", this.mappings, m -> m.mappingsFile, m -> m.mappingsUri, null);
         final @Nullable CodeBookResource paramMappings = this.getResource(
@@ -291,7 +324,7 @@ public final class Main implements Callable<Integer> {
                 c -> new Coords(c.constantsCoords, "constants", null));
 
         return new CodeBookContext(
-                this.remapper, mappings, paramMappings, constantJar, this.outputJar, this.forceWrite, input);
+                remapper, mappings, paramMappings, constantJar, this.outputJar, this.forceWrite, input);
     }
 
     private <T> @Nullable CodeBookResource getResource(
