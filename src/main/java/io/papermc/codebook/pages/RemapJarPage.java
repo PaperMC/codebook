@@ -25,13 +25,14 @@ package io.papermc.codebook.pages;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.util.IOUtil;
 import io.papermc.codebook.util.JarRunner;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import net.fabricmc.lorenztiny.TinyMappingFormat;
 import org.cadixdev.lorenz.MappingSet;
 
-public final class RemapJarPage {
+public final class RemapJarPage extends CodeBookPage {
 
     private final Path tinyRemapper;
 
@@ -40,12 +41,13 @@ public final class RemapJarPage {
     private final Path tempDir;
     private final MappingSet mappings;
 
+    @Inject
     public RemapJarPage(
-            final Path tinyRemapper,
-            final Path inputJar,
-            final List<Path> classpath,
-            final Path tempDir,
-            final MappingSet mappings) {
+            @RemapperJar final Path tinyRemapper,
+            @InputJar final Path inputJar,
+            @ClasspathJars final List<Path> classpath,
+            @TempDir final Path tempDir,
+            @Mappings final MappingSet mappings) {
         this.tinyRemapper = tinyRemapper;
         this.inputJar = inputJar;
         this.classpath = classpath;
@@ -53,7 +55,8 @@ public final class RemapJarPage {
         this.mappings = mappings;
     }
 
-    public Path remap() {
+    @Override
+    public void exec() {
         final Path remapped = this.tempDir.resolve("remapped.jar");
 
         final Path mappingsFile = this.tempDir.resolve("merged.tiny");
@@ -76,10 +79,11 @@ public final class RemapJarPage {
                         "--threads=1",
                         "--fixpackageaccess",
                         "--rebuildsourcefilenames",
+                        "--skiplocalvariablemapping",
                         "--renameinvalidlocals",
                         "--invalidlvnamepattern=\\$\\$\\d+")
                 .run();
 
-        return remapped;
+        this.bind(InputJar.KEY).to(remapped);
     }
 }

@@ -25,28 +25,28 @@ package io.papermc.codebook.pages;
 import at.favre.lib.bytes.Bytes;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.util.IOUtil;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-public final class ExtractVanillaJarPage {
+public final class ExtractVanillaJarPage extends CodeBookPage {
 
     private final Path inputJar;
     private final Path tempDir;
 
-    private final List<Path> libraries = new ArrayList<>();
-
-    public ExtractVanillaJarPage(final Path inputJar, final Path tempDir) {
+    @Inject
+    public ExtractVanillaJarPage(@InputJar final Path inputJar, @TempDir final Path tempDir) {
         this.inputJar = inputJar;
         this.tempDir = tempDir;
     }
 
-    public Path extract() {
+    @Override
+    public void exec() {
         try (final FileSystem inFs = FileSystems.newFileSystem(this.inputJar)) {
             final var rootDir = inFs.getPath("/");
             final var versionsDir = rootDir.resolve("META-INF/versions");
@@ -69,13 +69,17 @@ public final class ExtractVanillaJarPage {
                         + " from vanilla jar successfully (hash does not match)");
             }
 
+            final var libs = new ArrayList<Path>();
+            this.bind(ClasspathJars.KEY).to(libs);
+
             final var outLibsDir = this.tempDir.resolve("libraries");
             IOUtil.createDirectories(outLibsDir);
             for (final var library : libraries) {
                 final var libInternalPath = Path.of(library.filePath);
                 final var libFile = outLibsDir.resolve(libInternalPath.getFileName());
                 IOUtil.copy(librariesDir.resolve(library.filePath), libFile);
-                this.libraries.add(libFile);
+
+                libs.add(libFile);
 
                 final var libActualHash =
                         Bytes.from(libFile.toFile()).hashSha256().encodeHex();
@@ -85,14 +89,10 @@ public final class ExtractVanillaJarPage {
                 }
             }
 
-            return serverJar;
+            this.bind(InputJar.KEY).to(serverJar);
         } catch (final IOException e) {
             throw new UnexpectedException("Failed to filter jar", e);
         }
-    }
-
-    public List<Path> getLibraries() {
-        return Collections.unmodifiableList(this.libraries);
     }
 
     private record Version(String sha256, String version, String filePath) {

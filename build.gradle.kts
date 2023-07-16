@@ -22,6 +22,13 @@ java {
 
 repositories {
     mavenCentral()
+    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") {
+        name = "Sonatype"
+        mavenContent {
+            snapshotsOnly()
+            includeGroupAndSubgroups("dev.denwav.hypo")
+        }
+    }
     maven("https://maven.fabricmc.net") {
         name = "FabricMC"
         mavenContent {
@@ -39,8 +46,13 @@ dependencies {
     implementation(libs.logback)
     implementation(libs.sysoutOverSlf4j)
 
+    implementation(libs.guice)
+    implementation(libs.inject)
+
     implementation(libs.gson)
     implementation(libs.bytes)
+    implementation(libs.bundles.asm)
+
     implementation(libs.lorenz)
     implementation(libs.lorenz.proguard)
 

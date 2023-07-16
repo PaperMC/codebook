@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jetbrains.annotations.Nullable;
 
 public final class IOUtil {
 
@@ -58,7 +59,10 @@ public final class IOUtil {
         }
     }
 
-    public static void createDirectories(final Path file) {
+    public static void createDirectories(final @Nullable Path file) {
+        if (file == null) {
+            return;
+        }
         try {
             Files.createDirectories(file);
         } catch (final IOException e) {
@@ -87,7 +91,7 @@ public final class IOUtil {
     }
 
     public static void deleteRecursively(final Path dir) {
-        ArrayDeque<Path> files = new ArrayDeque<>();
+        var files = new ArrayDeque<Path>();
         // don't delete files inside the stream - file handles may still be held
         try (final Stream<Path> stream = Files.walk(dir)) {
             files = stream.collect(Collectors.toCollection(ArrayDeque::new));

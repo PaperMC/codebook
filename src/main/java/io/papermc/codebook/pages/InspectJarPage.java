@@ -32,27 +32,30 @@ import dev.denwav.hypo.mappings.contributors.CopyMappingsDown;
 import dev.denwav.hypo.model.ClassProviderRoot;
 import dev.denwav.hypo.model.HypoModelUtil;
 import io.papermc.codebook.exceptions.UnexpectedException;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import org.cadixdev.lorenz.MappingSet;
 
-public final class InspectJarPage {
+public final class InspectJarPage extends CodeBookPage {
 
     private final Path inputJar;
     private final List<Path> classpath;
     private final MappingSet mergedMappings;
-    private final Path tempDir;
 
+    @Inject
     public InspectJarPage(
-            final Path inputJar, final List<Path> classpath, final MappingSet mergedMappings, final Path tempDir) {
+            @InputJar final Path inputJar,
+            @ClasspathJars final List<Path> classpath,
+            @Mappings final MappingSet mergedMappings) {
         this.inputJar = inputJar;
         this.classpath = classpath;
         this.mergedMappings = mergedMappings;
-        this.tempDir = tempDir;
     }
 
-    public MappingSet inspect() {
+    @Override
+    public void exec() {
         final ClassProviderRoot root;
         final List<ClassProviderRoot> ctxRoots;
         final ClassProviderRoot jdkRoot;
@@ -73,7 +76,8 @@ public final class InspectJarPage {
                 .build();
 
         try (context) {
-            return this.inspect(context);
+            final MappingSet mappings = this.inspect(context);
+            this.bind(Mappings.KEY).to(mappings);
         } catch (final Exception e) {
             throw new UnexpectedException("Failed to inspect vanilla jar bytecode", e);
         }

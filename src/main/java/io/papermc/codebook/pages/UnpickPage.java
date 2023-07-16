@@ -24,10 +24,13 @@ package io.papermc.codebook.pages;
 
 import daomephsta.unpick.constantmappers.datadriven.parser.v2.UnpickV2Reader;
 import daomephsta.unpick.constantmappers.datadriven.parser.v2.UnpickV2Writer;
+import io.papermc.codebook.config.CodeBookContext;
+import io.papermc.codebook.config.CodeBookCoordsResource;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.util.IOUtil;
 import io.papermc.codebook.util.unpick.UnpickFilter;
 import io.papermc.codebook.util.unpick.UnpickV2LorenzRemapper;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileSystem;
@@ -36,39 +39,72 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.cadixdev.lorenz.MappingSet;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
-public final class UnpickPage {
+public final class UnpickPage extends CodeBookPage {
 
     private static final List<String> UNPICK_EXCLUDES = List.of("net/minecraft/client/");
 
     private final Path inputJar;
     private final List<Path> classpath;
     private final Path tempDir;
-    private final Path unpickDefinitionsJar;
-    private final Path constantsJar;
-    private final MappingSet originalMappings;
+    private final CodeBookContext ctx;
+    private final @Nullable Path paramMappingsFile;
+    private final @Nullable MappingSet paramMappings;
     private final MappingSet mergedMappings;
 
+    @Inject
     public UnpickPage(
-            final Path inputJar,
-            final List<Path> classpath,
-            final Path tempDir,
-            final Path unpickDefinitionsJar,
-            final Path constantsJar,
-            final MappingSet originalMappings,
-            final MappingSet mergedMappings) {
+            @InputJar final Path inputJar,
+            @ClasspathJars final List<Path> classpath,
+            @TempDir final Path tempDir,
+            @Context final CodeBookContext ctx,
+            @ParamMappings final @Nullable Path paramMappingsFile,
+            @ParamMappings final @Nullable MappingSet paramMappings,
+            @Mappings final MappingSet mergedMappings) {
         this.inputJar = inputJar;
         this.classpath = classpath;
         this.tempDir = tempDir;
-        this.unpickDefinitionsJar = unpickDefinitionsJar;
-        this.constantsJar = constantsJar;
-        this.originalMappings = originalMappings;
+        this.ctx = ctx;
+        this.paramMappingsFile = paramMappingsFile;
+        this.paramMappings = paramMappings;
         this.mergedMappings = mergedMappings;
     }
 
-    public Path unpick() {
-        final Path unpickDefinitions = this.remapUnpickDefinitions();
+    public void exec() {
+        final @Nullable Path inputConstantsJar;
+        if (this.ctx.constantsJar() != null) {
+            inputConstantsJar = this.ctx.constantsJar().resolveResourceFile(this.tempDir);
+        } else {
+            inputConstantsJar = null;
+        }
+
+        // we need to have param mappings to do any unpicking
+        if (this.paramMappingsFile == null) {
+            return;
+        }
+
+        // The param file needs to be a jar, which contains the parameter mappings as well as unpick definitions.
+        // We can handle just a plain mappings file for the remapping step, but not for unpicking.
+        if (!this.paramMappingsFile.getFileName().toString().endsWith(".jar")) {
+            return;
+        }
+
+        // And we need to have a constants jar. If one is provided, we'll use it
+        // Otherwise, if we know the Maven coordinates for the mappings, we can use it to find the
+        // corresponding constants jar too
+        final Path constantsJar;
+        if (inputConstantsJar != null) {
+            constantsJar = inputConstantsJar;
+        } else if (this.ctx.paramMappings() instanceof final CodeBookCoordsResource coords) {
+            constantsJar = this.downloadConstantsJar(coords, this.tempDir);
+        } else {
+            return;
+        }
+
+        final Path unpickDefinitions = this.remapUnpickDefinitions(this.paramMappingsFile);
 
         final Path outputJar = this.tempDir.resolve("unpicked.jar");
 
@@ -77,7 +113,7 @@ public final class UnpickPage {
                 IOUtil.absolutePathString(this.inputJar),
                 IOUtil.absolutePathString(outputJar),
                 IOUtil.absolutePathString(unpickDefinitions),
-                IOUtil.absolutePathString(this.constantsJar)));
+                IOUtil.absolutePathString(constantsJar)));
         args.addAll(this.classpath.stream().map(IOUtil::absolutePathString).toList());
 
         try {
@@ -86,12 +122,12 @@ public final class UnpickPage {
             throw new UnexpectedException("Failed to run unpick", e);
         }
 
-        return outputJar;
+        this.bind(InputJar.KEY).to(outputJar);
     }
 
-    private Path remapUnpickDefinitions() {
+    private Path remapUnpickDefinitions(final Path unpickDefinitionsJar) {
         final Path unpickDefinitions = this.tempDir.resolve("definitions.unpick");
-        try (final FileSystem fs = FileSystems.newFileSystem(this.unpickDefinitionsJar)) {
+        try (final FileSystem fs = FileSystems.newFileSystem(unpickDefinitionsJar)) {
             final Path inputDefs = fs.getPath("extras", "definitions.unpick");
             IOUtil.copy(inputDefs, unpickDefinitions);
         } catch (final IOException e) {
@@ -123,6 +159,13 @@ public final class UnpickPage {
     }
 
     private MappingSet getNamedToMojmap() {
-        return this.originalMappings.reverse().merge(this.mergedMappings);
+        return Objects.requireNonNull(this.paramMappings, "paramMappings")
+                .reverse()
+                .merge(this.mergedMappings);
+    }
+
+    private Path downloadConstantsJar(final CodeBookCoordsResource coords, final Path tempDir) {
+        return new CodeBookCoordsResource(coords.coords(), "constants", null, this.ctx.mavenBaseUrl())
+                .resolveResourceFile(tempDir);
     }
 }

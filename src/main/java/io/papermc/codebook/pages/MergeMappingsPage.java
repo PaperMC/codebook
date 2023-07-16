@@ -25,6 +25,7 @@ package io.papermc.codebook.pages;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.util.IOUtil;
 import io.papermc.codebook.util.ParamsMergeHandler;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -36,34 +37,41 @@ import org.cadixdev.lorenz.merge.MappingSetMerger;
 import org.cadixdev.lorenz.merge.MergeConfig;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public final class MergeMappingsPage {
+public final class MergeMappingsPage extends CodeBookPage {
 
     private final Path mojmapMappings;
     private final @Nullable Path paramMappings;
     private final Path tempDir;
 
-    private @Nullable MappingSet originalParamMappings = null;
-
-    public MergeMappingsPage(final Path mojmapMappings, final @Nullable Path paramMappings, final Path tempDir) {
+    @Inject
+    public MergeMappingsPage(
+            @MojangMappings final Path mojmapMappings,
+            @ParamMappings final @Nullable Path paramMappings,
+            @TempDir final Path tempDir) {
         this.mojmapMappings = mojmapMappings;
         this.paramMappings = paramMappings;
         this.tempDir = tempDir;
     }
 
-    public MappingSet merge() {
+    @Override
+    public void exec() {
         final MappingSet mojmap = this.getMojmapMappings();
         final @Nullable MappingSet params = this.getParamMappings();
-        this.originalParamMappings = params;
+        this.bind(ParamMappings.KEY).to(params);
 
         if (params == null) {
-            return mojmap;
+            this.bind(Mappings.KEY).to(mojmap);
+            return;
         }
 
         final MergeConfig mergeConfig = MergeConfig.builder()
                 .withFieldMergeStrategy(FieldMergeStrategy.STRICT)
                 .withMergeHandler(new ParamsMergeHandler())
                 .build();
-        return MappingSetMerger.create(mojmap, params, mergeConfig).merge();
+
+        final MappingSet merged =
+                MappingSetMerger.create(mojmap, params, mergeConfig).merge();
+        this.bind(Mappings.KEY).to(merged);
     }
 
     private MappingSet getMojmapMappings() {
@@ -97,9 +105,5 @@ public final class MergeMappingsPage {
         } catch (final IOException e) {
             throw new UnexpectedException("Failed to read parameter mappings file", e);
         }
-    }
-
-    public @Nullable MappingSet getOriginalParamMappings() {
-        return this.originalParamMappings;
     }
 }

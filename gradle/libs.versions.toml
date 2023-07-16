@@ -3,6 +3,7 @@ palantir = "2.33.0"
 slf4j = "2.0.7"
 lorenz = "0.5.7"
 unpick = "2.3.0"
+asm = "9.5"
 
 [plugins]
 spotless = "com.diffplug.spotless:6.19.0"
@@ -17,8 +18,16 @@ slf4j-jul = { module = "org.slf4j:jul-to-slf4j", version.ref = "slf4j" }
 logback = "ch.qos.logback:logback-classic:1.4.8"
 sysoutOverSlf4j = "uk.org.lidalia:sysout-over-slf4j:1.0.2"
 
+guice = "com.google.inject:guice:7.0.0"
+inject = "jakarta.inject:jakarta.inject-api:2.0.1"
+
 gson = "com.google.code.gson:gson:2.10.1"
 bytes = "at.favre.lib:bytes:1.6.1"
+
+asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
+asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
+asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
+
 lorenz = { module = "org.cadixdev:lorenz", version.ref = "lorenz" }
 lorenz-proguard = { module = "org.cadixdev:lorenz-io-proguard", version.ref = "lorenz" }
 
@@ -26,7 +35,7 @@ lorenz-tiny = "net.fabricmc:lorenz-tiny:4.0.0"
 unpick-format = { module = "net.fabricmc.unpick:unpick-format-utils", version.ref = "unpick" }
 unpick-cli = { module = "net.fabricmc.unpick:unpick-cli", version.ref = "unpick" }
 
-hypo-platform = "dev.denwav.hypo:hypo-platform:1.2.5"
+hypo-platform = "dev.denwav.hypo:hypo-platform:1.2.6-SNAPSHOT"
 hypo-model = { module = "dev.denwav.hypo:hypo-model" }
 hypo-core = { module = "dev.denwav.hypo:hypo-core" }
 hypo-asm = { module = "dev.denwav.hypo:hypo-asm" }
@@ -35,4 +44,5 @@ hypo-asm-hydrate = { module = "dev.denwav.hypo:hypo-asm-hydrate" }
 hypo-mappings = { module = "dev.denwav.hypo:hypo-mappings" }
 
 [bundles]
+asm = ["asm", "asm-util", "asm-tree"]
 hypo = ["hypo-model", "hypo-core", "hypo-asm", "hypo-hydrate", "hypo-asm-hydrate", "hypo-mappings"]
