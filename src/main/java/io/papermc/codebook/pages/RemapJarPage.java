@@ -79,7 +79,6 @@ public final class RemapJarPage extends CodeBookPage {
                         "--threads=1",
                         "--fixpackageaccess",
                         "--rebuildsourcefilenames",
-                        "--skiplocalvariablemapping",
                         "--renameinvalidlocals",
                         "--invalidlvnamepattern=\\$\\$\\d+")
                 .run();

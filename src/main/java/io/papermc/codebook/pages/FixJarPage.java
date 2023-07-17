@@ -22,15 +22,13 @@
 
 package io.papermc.codebook.pages;
 
-import static dev.denwav.hypo.asm.HypoAsmUtil.toJvmType;
-import static dev.denwav.hypo.model.data.MethodDescriptor.parseDescriptor;
-import static io.papermc.codebook.util.IOUtil.copy;
-import static io.papermc.codebook.util.IOUtil.createParentDirectories;
-import static java.util.Objects.requireNonNull;
 import static java.util.Objects.requireNonNullElse;
-import static org.objectweb.asm.Type.getType;
 
+import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmClassDataProvider;
+import dev.denwav.hypo.asm.AsmFieldData;
+import dev.denwav.hypo.asm.AsmMethodData;
+import dev.denwav.hypo.asm.AsmOutputWriter;
 import dev.denwav.hypo.asm.hydrate.BridgeMethodHydrator;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.HydrationManager;
@@ -45,20 +43,12 @@ import dev.denwav.hypo.model.data.Visibility;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
@@ -107,119 +97,69 @@ public final class FixJarPage extends CodeBookPage {
                 .build();
     }
 
-    private Path fixWithContext(final HypoContext context) {
-        final Path fixedJar = this.tempDir.resolve("fixed.jar");
-        try (final FileSystem inFs = FileSystems.newFileSystem(this.inputJar);
-                final FileSystem outFs = FileSystems.newFileSystem(fixedJar, Map.of("create", true))) {
-            this.fixToOutput(context, inFs, outFs);
-        } catch (final IOException e) {
-            throw new UnexpectedException("Failed to create fixed jar", e);
+    private Path fixWithContext(final HypoContext context) throws IOException {
+        for (final ClassData classData : context.getProvider().allClasses()) {
+            this.processClass((AsmClassData) classData);
         }
+
+        final Path fixedJar = this.tempDir.resolve("fixed.jar");
+        AsmOutputWriter.to(fixedJar).write(context);
 
         return fixedJar;
     }
 
-    private void fixToOutput(final HypoContext context, final FileSystem inFs, final FileSystem outFs)
-            throws IOException {
-        try (final Stream<Path> stream = Files.walk(inFs.getPath("/"))) {
-            stream.forEach(HypoModelUtil.wrapConsumer(p -> {
-                this.processFile(context, p, outFs);
-            }));
-        }
+    private void processClass(final AsmClassData classData) throws IOException {
+        OverrideAnnotationAdder.addAnnotations(classData);
+        RecordFieldAccessFixer.fixClass(classData);
     }
-
-    private void processFile(final HypoContext context, final Path inputFile, final FileSystem outFs)
-            throws IOException {
-        if (!Files.isRegularFile(inputFile)) {
-            return;
-        }
-
-        final Path outputFile = outFs.getPath(inputFile.toString());
-        createParentDirectories(outputFile);
-
-        if (!inputFile.getFileName().toString().endsWith(".class")) {
-            copy(inputFile, outputFile);
-            return;
-        }
-
-        final ClassReader reader = new ClassReader(Files.readAllBytes(inputFile));
-        final ClassNode node = new ClassNode(Opcodes.ASM9);
-        reader.accept(node, 0);
-
-        // This results in the class file being read and parsed by asm twice
-        // Really not great, but it's pretty minor all things considered. We need to make modifications
-        // to the node, but that's not a use-case hypo supports. Still want to use hypo rather than re-implementing
-        // the analysis, so here we are
-        final @Nullable ClassData classData = context.getProvider().findClass(node.name);
-        if (classData == null) {
-            throw new UnexpectedException("Could not find existing class");
-        }
-
-        this.processClass(classData, node);
-
-        final ClassWriter writer = new ClassWriter(0);
-        node.accept(writer);
-
-        Files.write(outputFile, writer.toByteArray());
-    }
-
-    private void processClass(final ClassData classData, final ClassNode node) {
-        OverrideAnnotationAdder.addAnnotations(classData, node);
-        RecordFieldAccessFixer.fixClass(classData, node);
-    }
-
-    private static final int RESET_ACCESS = ~(Opcodes.ACC_PUBLIC | Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED);
 
     private static final class OverrideAnnotationAdder {
-        private static final int DISQUALIFIED_METHODS = Opcodes.ACC_STATIC | Opcodes.ACC_PRIVATE;
-
         private OverrideAnnotationAdder() {}
 
-        private static void addAnnotations(final ClassData classData, final ClassNode node) {
-            for (final MethodNode method : node.methods) {
-                if ((method.access & DISQUALIFIED_METHODS) != 0) {
+        private static void addAnnotations(final AsmClassData classData) {
+            for (final MethodData method : classData.methods()) {
+                if (method.isStatic() || method.visibility() == Visibility.PRIVATE) {
                     continue;
                 }
                 if (isInitializer(method)) {
                     continue;
                 }
 
-                final MethodData methodData =
-                        requireNonNull(classData.method(method.name, parseDescriptor(method.desc)));
-
-                final @Nullable MethodData targetMethodData = methodData.get(HypoHydration.SYNTHETIC_SOURCE);
-                final MethodData baseMethod = requireNonNullElse(targetMethodData, methodData);
+                final @Nullable MethodData targetMethod = method.get(HypoHydration.SYNTHETIC_SOURCE);
+                final MethodData baseMethod = requireNonNullElse(targetMethod, method);
 
                 if (baseMethod.superMethod() != null) {
-                    if (method.invisibleAnnotations == null) {
-                        method.invisibleAnnotations = new ArrayList<>();
+                    final MethodNode node = ((AsmMethodData) method).getNode();
+                    if (node.invisibleAnnotations == null) {
+                        node.invisibleAnnotations = new ArrayList<>();
                     }
                     final var annoClass = "Ljava/lang/Override;";
-                    if (method.invisibleAnnotations.stream().noneMatch(a -> a.desc.equals(annoClass))) {
-                        method.invisibleAnnotations.add(new AnnotationNode(annoClass));
+                    if (node.invisibleAnnotations.stream().noneMatch(a -> a.desc.equals(annoClass))) {
+                        node.invisibleAnnotations.add(new AnnotationNode(annoClass));
                     }
                 }
             }
         }
 
-        private static boolean isInitializer(final MethodNode method) {
-            return method.name.equals("<init>") || method.name.equals("<clinit>");
+        private static boolean isInitializer(final MethodData method) {
+            return method.name().equals("<init>") || method.name().equals("<clinit>");
         }
     }
 
     private static final class RecordFieldAccessFixer {
+        private static final int RESET_ACCESS = ~(Opcodes.ACC_PUBLIC | Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED);
+
         private RecordFieldAccessFixer() {}
 
-        private static void fixClass(final ClassData classData, final ClassNode node) {
+        private static void fixClass(final AsmClassData classData) {
             if (classData.kind() != ClassKind.RECORD) {
                 return;
             }
 
-            for (final FieldNode field : node.fields) {
-                final FieldData fieldData = requireNonNull(classData.field(field.name, toJvmType(getType(field.desc))));
-                // just a little nicer to read using hypo vs querying flags
-                if (!fieldData.isStatic() && fieldData.visibility() != Visibility.PRIVATE && fieldData.isFinal()) {
-                    field.access = (field.access & RESET_ACCESS) | Opcodes.ACC_PRIVATE;
+            for (final FieldData field : classData.fields()) {
+                if (!field.isStatic() && field.visibility() != Visibility.PRIVATE && field.isFinal()) {
+                    final FieldNode node = ((AsmFieldData) field).getNode();
+                    node.access = (node.access & RESET_ACCESS) | Opcodes.ACC_PRIVATE;
                 }
             }
         }

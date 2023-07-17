@@ -29,6 +29,7 @@ import dev.denwav.hypo.hydrate.HydrationManager;
 import dev.denwav.hypo.mappings.ChangeChain;
 import dev.denwav.hypo.mappings.MappingsCompletionManager;
 import dev.denwav.hypo.mappings.contributors.CopyMappingsDown;
+import dev.denwav.hypo.mappings.contributors.CopyRecordParameters;
 import dev.denwav.hypo.model.ClassProviderRoot;
 import dev.denwav.hypo.model.HypoModelUtil;
 import io.papermc.codebook.exceptions.UnexpectedException;
@@ -90,6 +91,7 @@ public final class InspectJarPage extends CodeBookPage {
 
         return ChangeChain.create()
                 .addLink(CopyMappingsDown.create())
+                .addLink(CopyRecordParameters.create())
                 .applyChain(this.mergedMappings, MappingsCompletionManager.create(context));
     }
 }

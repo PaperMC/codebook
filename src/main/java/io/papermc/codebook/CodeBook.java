@@ -73,14 +73,11 @@ public final class CodeBook {
                 UnpickPage.class);
 
         Module module = this.createInitialModule(tempDir);
-        for (final Class<? extends CodeBookPage> page : book) {
+        for (final var page : book) {
             module = injector(module).getInstance(page).exec(module);
         }
 
-        final Path resultJar = injector(module)
-                .getBinding(CodeBookPage.InputJar.KEY)
-                .getProvider()
-                .get();
+        final Path resultJar = injector(module).getInstance(CodeBookPage.InputJar.KEY);
         IOUtil.move(resultJar, this.ctx.outputJar());
     }
 
