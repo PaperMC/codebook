@@ -1,0 +1,37 @@
+name: Deploy Snapshot
+on:
+  push:
+    branches: ['main']
+    paths-ignore:
+      - '.idea/**'
+      - 'license.txt'
+      - 'header.txt'
+      - 'readme.md'
+      - '.gitignore'
+      - '.gitattributes'
+
+jobs:
+  deploy:
+    name: Deploy Snapshot
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      - uses: gradle/wrapper-validation-action@v1
+      - uses: gradle/gradle-build-action@v2
+        name: Setup Gradle
+      - name: Get project version
+        id: get_version
+        shell: bash
+        run: |
+          project_version=$(./gradlew -q --console=plain printVersion)
+          echo "version=$project_version" >> $GITHUB_OUTPUT
+      - name: Deploy snapshot version
+        if: endsWith(steps.get_version.outputs.version, '-SNAPSHOT')
+        run: ./gradlew build publishMavenPublicationToDenwavRepository --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_denwavUsername: ${{ secrets.DENWAV_USERNAME }}
+          ORG_GRADLE_PROJECT_denwavPassword: ${{ secrets.DENWAV_PASSWORD }}
