@@ -20,8 +20,9 @@
  * USA
  */
 
-package io.papermc.codebook;
+package io.papermc.codebook.cli;
 
+import io.papermc.codebook.CodeBook;
 import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.config.CodeBookCoordsResource;
 import io.papermc.codebook.config.CodeBookFileResource;

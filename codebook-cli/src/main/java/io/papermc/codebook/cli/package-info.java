@@ -20,14 +20,8 @@
  * USA
  */
 
-package io.papermc.codebook;
+@DefaultQualifier(value = NonNull.class)
+package io.papermc.codebook.cli;
 
-import picocli.CommandLine;
-
-public final class VersionProvider implements CommandLine.IVersionProvider {
-
-    @Override
-    public String[] getVersion() {
-        return new String[] {this.getClass().getPackage().getSpecificationVersion()};
-    }
-}
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.framework.qual.DefaultQualifier;

@@ -1,16 +1,21 @@
 [versions]
+spotless = "6.19.0"
 palantir = "2.33.0"
+licenser = "0.6.1"
 slf4j = "2.0.7"
 lorenz = "0.5.7"
 unpick = "2.3.0"
 asm = "9.5"
 
 [plugins]
-spotless = "com.diffplug.spotless:6.19.0"
-licenser = "org.cadixdev.licenser:0.6.1"
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+licenser = { id = "org.cadixdev.licenser", version.ref = "licenser" }
 shadow = "com.github.johnrengelman.shadow:8.1.1"
 
 [libraries]
+gradle-spotless = { module = "com.diffplug.spotless:com.diffplug.spotless.gradle.plugin", version.ref = "spotless" }
+gradle-licenser = { module = "org.cadixdev.licenser:org.cadixdev.licenser.gradle.plugin", version.ref = "licenser" }
+
 checker = "org.checkerframework:checker-qual:3.36.0"
 picocli = "info.picocli:picocli:4.7.4"
 slf4j = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
