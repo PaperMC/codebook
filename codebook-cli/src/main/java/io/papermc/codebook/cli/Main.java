@@ -335,6 +335,7 @@ public final class Main implements Callable<Integer> {
                 c -> new Coords(c.constantsCoords, "constants", null));
 
         return new CodeBookContext(
+                null,
                 this.mavenBaseUrl,
                 remapper,
                 mappings,

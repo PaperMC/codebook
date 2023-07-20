@@ -40,7 +40,7 @@ lorenz-tiny = "net.fabricmc:lorenz-tiny:4.0.0"
 unpick-format = { module = "net.fabricmc.unpick:unpick-format-utils", version.ref = "unpick" }
 unpick-cli = { module = "net.fabricmc.unpick:unpick-cli", version.ref = "unpick" }
 
-hypo-platform = "dev.denwav.hypo:hypo-platform:1.2.6-SNAPSHOT"
+hypo-platform = "dev.denwav.hypo:hypo-platform:1.2.6"
 hypo-model = { module = "dev.denwav.hypo:hypo-model" }
 hypo-core = { module = "dev.denwav.hypo:hypo-core" }
 hypo-asm = { module = "dev.denwav.hypo:hypo-asm" }

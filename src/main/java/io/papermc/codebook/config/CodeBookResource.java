@@ -24,7 +24,8 @@ package io.papermc.codebook.config;
 
 import java.nio.file.Path;
 
-public sealed interface CodeBookResource permits CodeBookCoordsResource, CodeBookFileResource, CodeBookUriResource {
+public sealed interface CodeBookResource extends CodeBookRemapper
+        permits CodeBookCoordsResource, CodeBookFileResource, CodeBookUriResource {
 
     Path resolveResourceFile(final Path tempDir);
 }

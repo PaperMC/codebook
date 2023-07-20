@@ -37,7 +37,7 @@ public final class IOUtil {
 
     public static Path createTempDir(final String prefix) {
         try {
-            return Files.createTempDirectory(Path.of("."), prefix);
+            return absolutePath(Files.createTempDirectory(Path.of("."), prefix));
         } catch (final IOException e) {
             throw new UnexpectedException("Failed to create temporary directory", e);
         }

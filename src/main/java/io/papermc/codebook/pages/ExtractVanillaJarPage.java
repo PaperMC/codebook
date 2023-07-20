@@ -33,20 +33,31 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class ExtractVanillaJarPage extends CodeBookPage {
 
     private final Path inputJar;
+    private final @Nullable List<Path> classpathJars;
     private final Path tempDir;
 
     @Inject
-    public ExtractVanillaJarPage(@InputJar final Path inputJar, @TempDir final Path tempDir) {
+    public ExtractVanillaJarPage(
+            @InputJar final Path inputJar,
+            @ClasspathJars final @Nullable List<Path> classpathJars,
+            @TempDir final Path tempDir) {
         this.inputJar = inputJar;
+        this.classpathJars = classpathJars;
         this.tempDir = tempDir;
     }
 
     @Override
     public void exec() {
+        if (this.classpathJars != null) {
+            // nothing to do
+            return;
+        }
+
         try (final FileSystem inFs = FileSystems.newFileSystem(this.inputJar)) {
             final var rootDir = inFs.getPath("/");
             final var versionsDir = rootDir.resolve("META-INF/versions");

@@ -96,7 +96,7 @@ public abstract class CodeBookPage {
     @Target(ElementType.PARAMETER)
     @Retention(RetentionPolicy.RUNTIME)
     public @interface RemapperJar {
-        Key<Path> KEY = Key.get(Path.class, RemapperJar.class);
+        Key<List<Path>> KEY = Key.get(new TypeLiteral<>() {}, RemapperJar.class);
     }
 
     @Qualifier

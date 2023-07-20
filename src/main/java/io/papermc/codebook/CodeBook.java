@@ -27,7 +27,9 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.util.Providers;
+import io.papermc.codebook.config.CodeBookClasspathResource;
 import io.papermc.codebook.config.CodeBookContext;
+import io.papermc.codebook.config.CodeBookJarInput;
 import io.papermc.codebook.config.CodeBookResource;
 import io.papermc.codebook.exceptions.UserErrorException;
 import io.papermc.codebook.pages.CodeBookPage;
@@ -52,12 +54,15 @@ public final class CodeBook {
     }
 
     public void exec() {
-        final Path tempDir = IOUtil.createTempDir(".tmp_codebook");
-
-        try {
-            this.exec(tempDir);
-        } finally {
-            IOUtil.deleteRecursively(tempDir);
+        if (this.ctx.tempDir() == null) {
+            final Path tempDir = IOUtil.createTempDir(".tmp_codebook");
+            try {
+                this.exec(tempDir);
+            } finally {
+                IOUtil.deleteRecursively(tempDir);
+            }
+        } else {
+            this.exec(this.ctx.tempDir());
         }
     }
 
@@ -92,6 +97,12 @@ public final class CodeBook {
         }
 
         final Path inputJar = this.ctx.input().resolveInputFile(tempDir);
+        final @Nullable List<Path> classpathJars;
+        if (this.ctx.input() instanceof final CodeBookJarInput input) {
+            classpathJars = input.classpathJars();
+        } else {
+            classpathJars = null;
+        }
 
         final Path mappingsFile = mappings.resolveResourceFile(tempDir);
         final @Nullable Path paramMappingsFile;
@@ -101,17 +112,27 @@ public final class CodeBook {
             paramMappingsFile = null;
         }
 
-        final Path remapperJar = this.ctx.remapperJar().resolveResourceFile(tempDir);
+        final List<Path> remapperJars;
+        if (this.ctx.remapperJar() instanceof final CodeBookResource resource) {
+            remapperJars = List.of(resource.resolveResourceFile(tempDir));
+        } else if (this.ctx.remapperJar() instanceof final CodeBookClasspathResource resource) {
+            remapperJars = resource.jars();
+        } else {
+            throw new LinkageError();
+        }
 
         return new AbstractModule() {
             @Override
             protected void configure() {
                 this.bind(CodeBookPage.Context.KEY).toInstance(CodeBook.this.ctx);
                 this.bind(CodeBookPage.InputJar.KEY).toInstance(inputJar);
+                if (classpathJars != null) {
+                    this.bind(CodeBookPage.ClasspathJars.KEY).toInstance(classpathJars);
+                }
                 this.bind(CodeBookPage.TempDir.KEY).toInstance(tempDir);
                 this.bind(CodeBookPage.MojangMappings.PATH_KEY).toInstance(mappingsFile);
                 this.bind(CodeBookPage.ParamMappings.PATH_KEY).toProvider(Providers.of(paramMappingsFile));
-                this.bind(CodeBookPage.RemapperJar.KEY).toInstance(remapperJar);
+                this.bind(CodeBookPage.RemapperJar.KEY).toInstance(remapperJars);
             }
         };
     }

@@ -23,15 +23,6 @@
 package io.papermc.codebook.config;
 
 import java.nio.file.Path;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import java.util.List;
 
-public record CodeBookContext(
-        @Nullable Path tempDir,
-        @Nullable String mavenBaseUrl,
-        CodeBookRemapper remapperJar,
-        @Nullable CodeBookResource mappings,
-        @Nullable CodeBookResource paramMappings,
-        @Nullable CodeBookResource constantsJar,
-        Path outputJar,
-        boolean overwrite,
-        CodeBookInput input) {}
+public record CodeBookClasspathResource(List<Path> jars) implements CodeBookRemapper {}

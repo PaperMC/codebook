@@ -34,7 +34,7 @@ import org.cadixdev.lorenz.MappingSet;
 
 public final class RemapJarPage extends CodeBookPage {
 
-    private final Path tinyRemapper;
+    private final List<Path> tinyRemapper;
 
     private final Path inputJar;
     private final List<Path> classpath;
@@ -43,7 +43,7 @@ public final class RemapJarPage extends CodeBookPage {
 
     @Inject
     public RemapJarPage(
-            @RemapperJar final Path tinyRemapper,
+            @RemapperJar final List<Path> tinyRemapper,
             @InputJar final Path inputJar,
             @ClasspathJars final List<Path> classpath,
             @TempDir final Path tempDir,

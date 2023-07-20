@@ -22,33 +22,37 @@
 
 package io.papermc.codebook.util;
 
+import dev.denwav.hypo.model.HypoModelUtil;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.jar.Manifest;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class JarRunner {
 
     private final String name;
-    private final Path jar;
+    private final List<Path> jars;
     private final List<String> arguments = new ArrayList<>();
 
-    private JarRunner(final String name, final Path jar) {
+    private JarRunner(final String name, final List<Path> jars) {
         this.name = name;
-        this.jar = jar;
+        this.jars = jars;
     }
 
-    public static JarRunner of(final String name, final Path jar) {
-        return new JarRunner(name, jar);
+    public static JarRunner of(final String name, final List<Path> jars) {
+        return new JarRunner(name, jars);
     }
 
     public JarRunner withArgs(final String... args) {
@@ -63,15 +67,17 @@ public final class JarRunner {
     }
 
     public void run() {
-        final URL url;
+        final URL[] urls;
         try {
-            url = this.jar.toUri().toURL();
-        } catch (final MalformedURLException e) {
-            throw new UnexpectedException("Failed to create URL from " + this.jar, e);
+            urls = this.jars.stream()
+                    .map(HypoModelUtil.wrapFunction(j -> j.toUri().toURL()))
+                    .toArray(URL[]::new);
+        } catch (final Exception e) {
+            throw new UnexpectedException("Failed to create URLs from " + this.jars, e);
         }
 
-        try (final URLClassLoader loader = new URLClassLoader(new URL[] {url})) {
-            final Method mainMethod = this.getMainMethod(loader, this.jar);
+        try (final URLClassLoader loader = new URLClassLoader(urls)) {
+            final Method mainMethod = this.getMainMethod(loader, this.jars);
 
             final Thread thread = this.createThread(mainMethod, loader);
             thread.start();
@@ -101,25 +107,45 @@ public final class JarRunner {
         return thread;
     }
 
-    private Method getMainMethod(final URLClassLoader loader, final Path jar) throws IOException {
-        final URL manifestResource = loader.findResource("META-INF/MANIFEST.MF");
+    private Method getMainMethod(final URLClassLoader loader, final List<Path> jars) throws IOException {
+        for (final Path jar : jars) {
+            final @Nullable Method mainMethod = this.getMainMethod0(loader, jar);
+            if (mainMethod != null) {
+                return mainMethod;
+            }
+        }
 
-        final String mainClassName;
-        try (final InputStream input = manifestResource.openStream()) {
-            mainClassName = new Manifest(input).getMainAttributes().getValue("Main-Class");
+        throw new UnexpectedException("Failed to find main class in jars: " + jars);
+    }
+
+    private @Nullable Method getMainMethod0(final URLClassLoader loader, final Path jar) throws IOException {
+        final @Nullable String mainClassName;
+        try (final FileSystem fs = FileSystems.newFileSystem(jar)) {
+            final Path manifest = fs.getPath("/", "META-INF", "MANIFEST.MF");
+            if (Files.notExists(manifest)) {
+                return null;
+            }
+
+            try (final InputStream input = Files.newInputStream(manifest)) {
+                mainClassName = new Manifest(input).getMainAttributes().getValue("Main-Class");
+            }
+        }
+
+        if (mainClassName == null) {
+            return null;
         }
 
         final Class<?> mainClass;
         try {
             mainClass = Class.forName(mainClassName, true, loader);
         } catch (final ClassNotFoundException e) {
-            throw new UnexpectedException("Failed to find main class in " + jar, e);
+            return null;
         }
 
         try {
             return mainClass.getMethod("main", String[].class);
         } catch (final NoSuchMethodException e) {
-            throw new UnexpectedException("Could not find main method", e);
+            return null;
         }
     }
 }
