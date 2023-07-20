@@ -22,16 +22,27 @@
 
 package io.papermc.codebook.config;
 
+import io.soabase.recordbuilder.core.RecordBuilder;
 import java.nio.file.Path;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jetbrains.annotations.NotNull;
 
+@RecordBuilder
+// RecordBuilder unfortunately does not understand TYPE_USE, so to make it generate code with property
+// nullability we need to explicitly place annotations which support targets other than TYPE_USE
+@RecordBuilder.Options(interpretNotNulls = true)
 public record CodeBookContext(
-        @Nullable Path tempDir,
-        @Nullable String mavenBaseUrl,
-        CodeBookRemapper remapperJar,
-        @Nullable CodeBookResource mappings,
-        @Nullable CodeBookResource paramMappings,
-        @Nullable CodeBookResource constantsJar,
-        Path outputJar,
+        @Nullable @org.jetbrains.annotations.Nullable Path tempDir,
+        @Nullable @org.jetbrains.annotations.Nullable String mavenBaseUrl,
+        @NotNull CodeBookRemapper remapperJar,
+        @Nullable @org.jetbrains.annotations.Nullable CodeBookResource mappings,
+        @Nullable @org.jetbrains.annotations.Nullable CodeBookResource paramMappings,
+        @Nullable @org.jetbrains.annotations.Nullable CodeBookResource constantsJar,
+        @NotNull Path outputJar,
         boolean overwrite,
-        CodeBookInput input) {}
+        @NotNull CodeBookInput input) {
+
+    public static CodeBookContextBuilder builder() {
+        return CodeBookContextBuilder.builder();
+    }
+}

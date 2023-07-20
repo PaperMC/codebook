@@ -22,7 +22,16 @@
 
 package io.papermc.codebook.config;
 
+import io.soabase.recordbuilder.core.RecordBuilder;
 import java.nio.file.Path;
 import java.util.List;
+import org.jetbrains.annotations.NotNull;
 
-public record CodeBookClasspathResource(List<Path> jars) implements CodeBookRemapper {}
+@RecordBuilder
+@RecordBuilder.Options(interpretNotNulls = true, useImmutableCollections = true, addSingleItemCollectionBuilders = true)
+public record CodeBookClasspathResource(@NotNull List<Path> jars) implements CodeBookRemapper {
+
+    static CodeBookClasspathResourceBuilder builder() {
+        return CodeBookClasspathResourceBuilder.builder();
+    }
+}

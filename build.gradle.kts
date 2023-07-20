@@ -25,6 +25,9 @@ dependencies {
 
     implementation(platform(libs.hypo.platform))
     implementation(libs.bundles.hypo)
+
+    annotationProcessor(libs.recordBuilder.processor)
+    compileOnly(libs.recordBuilder.core)
 }
 
 publishing {

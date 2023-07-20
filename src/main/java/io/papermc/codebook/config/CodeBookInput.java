@@ -27,6 +27,14 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 public sealed interface CodeBookInput permits CodeBookVersionInput, CodeBookJarInput {
 
+    static CodeBookVersionInput ofVersion(final String mcVersion) {
+        return CodeBookVersionInput.of(mcVersion);
+    }
+
+    static CodeBookJarInputBuilder ofJar() {
+        return CodeBookJarInput.builder();
+    }
+
     Path resolveInputFile(final Path tempDir);
 
     // It's a bit odd for mappings to be here, but the MC version input can specify its own mappings

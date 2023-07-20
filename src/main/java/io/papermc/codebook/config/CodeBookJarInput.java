@@ -22,10 +22,18 @@
 
 package io.papermc.codebook.config;
 
+import io.soabase.recordbuilder.core.RecordBuilder;
 import java.nio.file.Path;
 import java.util.List;
+import org.jetbrains.annotations.NotNull;
 
-public record CodeBookJarInput(Path inputJar, List<Path> classpathJars) implements CodeBookInput {
+@RecordBuilder
+@RecordBuilder.Options(interpretNotNulls = true, addSingleItemCollectionBuilders = true, useImmutableCollections = true)
+public record CodeBookJarInput(@NotNull Path inputJar, @NotNull List<Path> classpathJars) implements CodeBookInput {
+
+    static CodeBookJarInputBuilder builder() {
+        return CodeBookJarInputBuilder.builder();
+    }
 
     @Override
     public Path resolveInputFile(final Path tempDir) {

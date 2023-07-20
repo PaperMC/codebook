@@ -166,7 +166,6 @@ public final class UnpickPage extends CodeBookPage {
 
     private Path downloadConstantsJar(final CodeBookCoordsResource coords, final Path tempDir) {
         final String baseUrl = Objects.requireNonNull(this.ctx.mavenBaseUrl(), "mavenBaseUrl not set");
-        return new CodeBookCoordsResource(coords.coords(), "constants", null, baseUrl)
-                .resolveResourceFile(tempDir);
+        return new CodeBookCoordsResource(coords.coords(), "constants", null, baseUrl).resolveResourceFile(tempDir);
     }
 }

@@ -334,16 +334,16 @@ public final class Main implements Callable<Integer> {
                 c -> c.constantsUri,
                 c -> new Coords(c.constantsCoords, "constants", null));
 
-        return new CodeBookContext(
-                null,
-                this.mavenBaseUrl,
-                remapper,
-                mappings,
-                paramMappings,
-                constantJar,
-                this.outputJar,
-                this.forceWrite,
-                input);
+        return CodeBookContext.builder()
+                .mavenBaseUrl(this.mavenBaseUrl)
+                .remapperJar(remapper)
+                .mappings(mappings)
+                .paramMappings(paramMappings)
+                .constantsJar(constantJar)
+                .outputJar(this.outputJar)
+                .overwrite(this.forceWrite)
+                .input(input)
+                .build();
     }
 
     private <T> @Nullable CodeBookResource getResource(

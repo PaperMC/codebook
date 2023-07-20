@@ -24,12 +24,21 @@ package io.papermc.codebook.config;
 
 import io.papermc.codebook.util.DownloadSpec;
 import io.papermc.codebook.util.Downloader;
+import io.soabase.recordbuilder.core.RecordBuilder;
 import java.net.URI;
 import java.nio.file.Path;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jetbrains.annotations.NotNull;
 
-public record CodeBookUriResource(String name, URI uri, @Nullable String sha1)
+@RecordBuilder
+@RecordBuilder.Options(interpretNotNulls = true)
+public record CodeBookUriResource(
+        @NotNull String name, @NotNull URI uri, @Nullable @org.jetbrains.annotations.Nullable String sha1)
         implements CodeBookResource, DownloadSpec {
+
+    public static CodeBookUriResourceBuilder builder() {
+        return CodeBookUriResourceBuilder.builder();
+    }
 
     @Override
     public Path resolveResourceFile(final Path tempDir) {

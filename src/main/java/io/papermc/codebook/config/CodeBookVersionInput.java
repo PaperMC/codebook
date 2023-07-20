@@ -31,6 +31,10 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 public record CodeBookVersionInput(String mcVersion) implements CodeBookInput {
 
+    static CodeBookVersionInput of(final String mcVersion) {
+        return new CodeBookVersionInput(mcVersion);
+    }
+
     @Override
     public Path resolveInputFile(final Path tempDir) {
         final var manifest = MinecraftManifest.getManifest();

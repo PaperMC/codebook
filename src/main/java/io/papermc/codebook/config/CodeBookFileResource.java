@@ -26,6 +26,10 @@ import java.nio.file.Path;
 
 public record CodeBookFileResource(Path mappingsFile) implements CodeBookResource {
 
+    public static CodeBookFileResource of(final Path mappingsFile) {
+        return new CodeBookFileResource(mappingsFile);
+    }
+
     @Override
     public Path resolveResourceFile(final Path tempDir) {
         return this.mappingsFile;

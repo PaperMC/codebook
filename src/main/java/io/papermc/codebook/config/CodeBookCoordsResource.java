@@ -24,13 +24,24 @@ package io.papermc.codebook.config;
 
 import io.papermc.codebook.exceptions.UserErrorException;
 import io.papermc.codebook.util.Downloader;
+import io.soabase.recordbuilder.core.RecordBuilder;
 import java.net.URI;
 import java.nio.file.Path;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jetbrains.annotations.NotNull;
 
+@RecordBuilder
+@RecordBuilder.Options(interpretNotNulls = true)
 public record CodeBookCoordsResource(
-        String coords, @Nullable String classifier, @Nullable String extension, String mavenBaseUrl)
+        @NotNull String coords,
+        @Nullable @org.jetbrains.annotations.Nullable String classifier,
+        @Nullable @org.jetbrains.annotations.Nullable String extension,
+        @NotNull String mavenBaseUrl)
         implements CodeBookResource {
+
+    public static CodeBookCoordsResourceBuilder builder() {
+        return CodeBookCoordsResourceBuilder.builder();
+    }
 
     @Override
     public Path resolveResourceFile(final Path tempDir) {

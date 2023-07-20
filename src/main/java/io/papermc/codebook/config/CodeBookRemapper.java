@@ -22,4 +22,23 @@
 
 package io.papermc.codebook.config;
 
-public sealed interface CodeBookRemapper permits CodeBookResource, CodeBookClasspathResource {}
+import java.nio.file.Path;
+
+public sealed interface CodeBookRemapper permits CodeBookResource, CodeBookClasspathResource {
+
+    static CodeBookCoordsResourceBuilder ofMavenCoords() {
+        return CodeBookCoordsResource.builder();
+    }
+
+    static CodeBookFileResource ofFile(final Path file) {
+        return CodeBookFileResource.of(file);
+    }
+
+    static CodeBookUriResourceBuilder ofUri() {
+        return CodeBookUriResource.builder();
+    }
+
+    static CodeBookClasspathResourceBuilder ofClasspath() {
+        return CodeBookClasspathResource.builder();
+    }
+}

@@ -27,5 +27,17 @@ import java.nio.file.Path;
 public sealed interface CodeBookResource extends CodeBookRemapper
         permits CodeBookCoordsResource, CodeBookFileResource, CodeBookUriResource {
 
+    static CodeBookCoordsResourceBuilder ofMavenCoords() {
+        return CodeBookCoordsResource.builder();
+    }
+
+    static CodeBookFileResource ofFile(final Path file) {
+        return CodeBookFileResource.of(file);
+    }
+
+    static CodeBookUriResourceBuilder ofUri() {
+        return CodeBookUriResource.builder();
+    }
+
     Path resolveResourceFile(final Path tempDir);
 }
