@@ -128,6 +128,8 @@ public final class CodeBook {
                 this.bind(CodeBookPage.InputJar.KEY).toInstance(inputJar);
                 if (classpathJars != null) {
                     this.bind(CodeBookPage.ClasspathJars.KEY).toInstance(classpathJars);
+                } else {
+                    this.bind(CodeBookPage.ClasspathJars.KEY).toProvider(Providers.of(null));
                 }
                 this.bind(CodeBookPage.TempDir.KEY).toInstance(tempDir);
                 this.bind(CodeBookPage.MojangMappings.PATH_KEY).toInstance(mappingsFile);
