@@ -197,7 +197,7 @@ public final class FixJarPage extends CodeBookPage {
             list.add(value);
             return list;
         } else {
-            return new ArrayList<>(List.of());
+            return new ArrayList<>(List.of(value));
         }
     }
 }
