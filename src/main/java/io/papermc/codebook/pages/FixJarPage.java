@@ -26,6 +26,7 @@ import static java.util.Objects.requireNonNullElse;
 
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmClassDataProvider;
+import dev.denwav.hypo.asm.AsmConstructorData;
 import dev.denwav.hypo.asm.AsmFieldData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.asm.AsmOutputWriter;
@@ -111,6 +112,7 @@ public final class FixJarPage extends CodeBookPage {
     private void processClass(final AsmClassData classData) throws IOException {
         OverrideAnnotationAdder.addAnnotations(classData);
         RecordFieldAccessFixer.fixClass(classData);
+        DeprecatedAnnotationAdder.addAnnotations(classData);
     }
 
     private static final class OverrideAnnotationAdder {
@@ -143,6 +145,34 @@ public final class FixJarPage extends CodeBookPage {
 
         private static boolean isInitializer(final MethodData method) {
             return method.name().equals("<init>") || method.name().equals("<clinit>");
+        }
+    }
+
+    private static final class DeprecatedAnnotationAdder {
+        private DeprecatedAnnotationAdder() {}
+
+        private static void addAnnotations(final AsmClassData classData) {
+            for (final MethodData method : classData.methods()) {
+                final MethodNode node;
+                if (method instanceof final AsmMethodData asm) {
+                    node = asm.getNode();
+                } else if (method instanceof final AsmConstructorData asm) {
+                    node = asm.getNode();
+                } else {
+                    System.out.println("no node? " + method.getClass().getName());
+                    continue;
+                }
+
+                if ((node.access & Opcodes.ACC_DEPRECATED) != 0) {
+                    if (node.visibleAnnotations == null) {
+                        node.visibleAnnotations = new ArrayList<>();
+                    }
+                    final var annoClass = "Ljava/lang/Deprecated;";
+                    if (node.visibleAnnotations.stream().noneMatch(a -> a.desc.equals(annoClass))) {
+                        node.visibleAnnotations.add(new AnnotationNode(annoClass));
+                    }
+                }
+            }
         }
     }
 
