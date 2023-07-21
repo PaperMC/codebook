@@ -109,7 +109,7 @@ public final class FixJarPage extends CodeBookPage {
         return fixedJar;
     }
 
-    private void processClass(final AsmClassData classData) throws IOException {
+    private void processClass(final AsmClassData classData) {
         OverrideAnnotationAdder.addAnnotations(classData);
         RecordFieldAccessFixer.fixClass(classData);
         DeprecatedAnnotationAdder.addAnnotations(classData);
@@ -132,12 +132,11 @@ public final class FixJarPage extends CodeBookPage {
 
                 if (baseMethod.superMethod() != null) {
                     final MethodNode node = ((AsmMethodData) method).getNode();
-                    if (node.invisibleAnnotations == null) {
-                        node.invisibleAnnotations = new ArrayList<>();
-                    }
                     final var annoClass = "Ljava/lang/Override;";
-                    if (node.invisibleAnnotations.stream().noneMatch(a -> a.desc.equals(annoClass))) {
-                        node.invisibleAnnotations.add(new AnnotationNode(annoClass));
+                    if (node.invisibleAnnotations == null
+                            || node.invisibleAnnotations.stream().noneMatch(a -> a.desc.equals(annoClass))) {
+                        node.invisibleAnnotations =
+                                appendToList(node.invisibleAnnotations, new AnnotationNode(annoClass));
                     }
                 }
             }
@@ -159,17 +158,15 @@ public final class FixJarPage extends CodeBookPage {
                 } else if (method instanceof final AsmConstructorData asm) {
                     node = asm.getNode();
                 } else {
-                    System.out.println("no node? " + method.getClass().getName());
-                    continue;
+                    // should never happen
+                    throw new IllegalStateException("Unknown type: " + method.getClass());
                 }
 
                 if ((node.access & Opcodes.ACC_DEPRECATED) != 0) {
-                    if (node.visibleAnnotations == null) {
-                        node.visibleAnnotations = new ArrayList<>();
-                    }
                     final var annoClass = "Ljava/lang/Deprecated;";
-                    if (node.visibleAnnotations.stream().noneMatch(a -> a.desc.equals(annoClass))) {
-                        node.visibleAnnotations.add(new AnnotationNode(annoClass));
+                    if (node.visibleAnnotations == null
+                            || node.visibleAnnotations.stream().noneMatch(a -> a.desc.equals(annoClass))) {
+                        node.visibleAnnotations = appendToList(node.visibleAnnotations, new AnnotationNode(annoClass));
                     }
                 }
             }
@@ -192,6 +189,15 @@ public final class FixJarPage extends CodeBookPage {
                     node.access = (node.access & RESET_ACCESS) | Opcodes.ACC_PRIVATE;
                 }
             }
+        }
+    }
+
+    private static <T> List<T> appendToList(final @Nullable List<T> list, final T value) {
+        if (list != null) {
+            list.add(value);
+            return list;
+        } else {
+            return new ArrayList<>(List.of());
         }
     }
 }
