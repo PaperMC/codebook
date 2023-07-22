@@ -24,6 +24,7 @@ package io.papermc.codebook.pages;
 
 import static java.util.Objects.requireNonNullElse;
 
+import com.google.common.collect.Iterables;
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmClassDataProvider;
 import dev.denwav.hypo.asm.AsmConstructorData;
@@ -134,7 +135,7 @@ public final class FixJarPage extends CodeBookPage {
                     final MethodNode node = ((AsmMethodData) method).getNode();
                     final var annoClass = "Ljava/lang/Override;";
                     if (node.invisibleAnnotations == null
-                            || node.invisibleAnnotations.stream().noneMatch(a -> a.desc.equals(annoClass))) {
+                            || !Iterables.any(node.invisibleAnnotations, a -> a.desc.equals(annoClass))) {
                         node.invisibleAnnotations =
                                 appendToList(node.invisibleAnnotations, new AnnotationNode(annoClass));
                     }
@@ -165,7 +166,7 @@ public final class FixJarPage extends CodeBookPage {
                 if ((node.access & Opcodes.ACC_DEPRECATED) != 0) {
                     final var annoClass = "Ljava/lang/Deprecated;";
                     if (node.visibleAnnotations == null
-                            || node.visibleAnnotations.stream().noneMatch(a -> a.desc.equals(annoClass))) {
+                            || !Iterables.any(node.visibleAnnotations, a -> a.desc.equals(annoClass))) {
                         node.visibleAnnotations = appendToList(node.visibleAnnotations, new AnnotationNode(annoClass));
                     }
                 }
