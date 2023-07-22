@@ -94,12 +94,12 @@ publishing {
 
     repositories {
         val url = if (isSnapshot) {
-            "https://repo.denwav.dev/repository/maven-snapshots/"
+            "https://repo.papermc.io/repository/maven-snapshots/"
         } else {
-            "https://repo.denwav.dev/repository/maven-releases/"
+            "https://repo.papermc.io/repository/maven-releases/"
         }
         maven(url) {
-            name = "denwav"
+            name = "papermc"
             credentials(PasswordCredentials::class)
         }
     }

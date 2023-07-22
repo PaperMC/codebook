@@ -31,7 +31,7 @@ jobs:
           echo "version=$project_version" >> $GITHUB_OUTPUT
       - name: Deploy snapshot version
         if: endsWith(steps.get_version.outputs.version, '-SNAPSHOT')
-        run: ./gradlew build publishCodebookPublicationToDenwavRepository --stacktrace
+        run: ./gradlew build publishCodebookPublicationToPapermcRepository --stacktrace
         env:
-          ORG_GRADLE_PROJECT_denwavUsername: ${{ secrets.DENWAV_USERNAME }}
-          ORG_GRADLE_PROJECT_denwavPassword: ${{ secrets.DENWAV_PASSWORD }}
+          ORG_GRADLE_PROJECT_papermcUsername: ${{ secrets.NEXUS_USERNAME }}
+          ORG_GRADLE_PROJECT_papermcPassword: ${{ secrets.NEXUS_PASSWORD }}

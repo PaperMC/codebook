@@ -17,10 +17,10 @@ jobs:
       - uses: gradle/gradle-build-action@v2
         name: Deploy
         with:
-          arguments: build publishCodebookPublicationToDenwavRepository --stacktrace
+          arguments: build publishCodebookPublicationToPapermcRepository --stacktrace
         env:
-          ORG_GRADLE_PROJECT_denwavUsername: ${{ secrets.DENWAV_USERNAME }}
-          ORG_GRADLE_PROJECT_denwavPassword: ${{ secrets.DENWAV_PASSWORD }}
+          ORG_GRADLE_PROJECT_papermcUsername: ${{ secrets.NEXUS_USERNAME }}
+          ORG_GRADLE_PROJECT_papermcPassword: ${{ secrets.NEXUS_PASSWORD }}
       - name: Get tag name
         id: get_tag
         shell: bash
