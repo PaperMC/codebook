@@ -1,0 +1,34 @@
+Method Name, Method Owner, Method Descriptor, Expected Name
+# generic methods
+hashCode,io/paper/Paper,()I,hashCode
+size,java/util/List,()I,size
+length,[Ljava/lang/String,()I,len
+freeze,net/minecraft/core/RegistryAccess,()Lnet/minecraft/core/RegistryAccess.Frozen;,frozen
+# getters
+getName,io/paper/Paper,()Ljava/lang/String;,name
+getSuperLongDumName,io/paper/Paper,()Ljava/lang/String;,superLongDumName
+getOrCreateSomething,io/paper/Paper,()Ljava/lang/String;,something
+# as
+asString,io/paper/Paper,()Ljava/lang/String;,string
+asLevel,io/paper/paper,()Lnet/minecraft/Level;,level
+# readLine
+readLine,some/stream,()Ljava/lang/String;,line
+# strings
+split,java/lang/String,()Ljava/lang/String;,parts
+split,com/google/common/base/Splitter,()Ljava/lang/String;,parts
+repeat,java/lang/String,()Ljava/lang/String;,repeated
+indexOf,java/lang/String,()I,index
+lastIndexOf,java/lang/String,()I,index
+substring,java/lang/String,()I,sub
+codePointAt,java/lang/String,()I,code
+trim,java/lang/String,()Ljava/lang/String;,trimmed
+strip,java/lang/String,()Ljava/lang/String;,stripped
+stripLeading,java/lang/String,()Ljava/lang/String;,stripped
+stripTrailing,java/lang/String,()Ljava/lang/String;,stripped
+stripIndent,java/lang/String,()Ljava/lang/String;,stripped
+formatted,java/lang/String,()Ljava/lang/String;,formatted
+# negative cases
+getOrCreate,io/paper/Paper,()Ljava/lang/String;,
+gettingBetter,io/paper/Paper,()Ljava/lang/String;,
+as,io/paper/paper,()Ljava/lang/String;,
+ass,io/paper/paper,()Ljava/lang/String;,

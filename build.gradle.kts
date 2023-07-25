@@ -28,6 +28,9 @@ dependencies {
 
     annotationProcessor(libs.recordBuilder.processor)
     compileOnly(libs.recordBuilder.core)
+
+    testImplementation(libs.junit.core)
+    testImplementation(libs.junit.params)
 }
 
 publishing {
@@ -39,6 +42,10 @@ publishing {
             }
         }
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.register("printVersion") {
