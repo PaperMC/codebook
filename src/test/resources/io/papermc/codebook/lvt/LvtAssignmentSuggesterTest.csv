@@ -11,11 +11,24 @@ getOrCreateSomething,io/paper/Paper,()Ljava/lang/String;,something
 # as
 asString,io/paper/Paper,()Ljava/lang/String;,string
 asLevel,io/paper/paper,()Lnet/minecraft/Level;,level
+# new
+newArrayList,com/google/common/collect/Lists,()Ljava/util/ArrayList;,list
+newHashMap,com/google/common/collect/Maps,()Ljava/util/HashMap;,map
+newHashSet,com/google/common/collect/Sets,()Ljava/util/HashSet;,set
+newLinkedHashMap,com/google/common/collect/Maps,()Ljava/util/LinkedHashMap;,map
+newArrayListWithExpectedSize,com/google/common/collect/Lists,(I)Ljava/util/ArrayList;,list
+newTree,some/tree/Maker,()Lcool/Tree;,tree
+# read
+readStruct,net/minecraft/nbt/TagParser,()Lnet/minecraft/nbt/CompoundTag;,struct
+readBoolean,com/mojang/brigadier/StringReader,()Z,boolean
+readUnquotedString,com/mojang/brigadier/StringReader,()Ljava/lang/String;,unquotedString
 # readLine
 readLine,some/stream,()Ljava/lang/String;,line
 # strings
 split,java/lang/String,()Ljava/lang/String;,parts
 split,com/google/common/base/Splitter,()Ljava/lang/String;,parts
+splitToStream,com/google/common/base/Splitter,()Ljava/util/stream/Stream;,parts
+splitToList,com/google/common/base/Splitter,()Ljava/util/List;,parts
 repeat,java/lang/String,()Ljava/lang/String;,repeated
 indexOf,java/lang/String,()I,index
 lastIndexOf,java/lang/String,()I,index

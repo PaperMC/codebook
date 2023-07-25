@@ -46,6 +46,16 @@ public final class LvtAssignmentSuggester {
             return suggested;
         }
 
+        suggested = suggestNameFromNew(methodName, insn);
+        if (suggested != null) {
+            return suggested;
+        }
+
+        suggested = suggestNameFromRead(methodName);
+        if (suggested != null) {
+            return suggested;
+        }
+
         suggested = suggestNameFromLine(methodName);
         if (suggested != null) {
             return suggested;
@@ -106,6 +116,49 @@ public final class LvtAssignmentSuggester {
             return Character.toLowerCase(baseName.charAt(0)) + baseName.substring(1);
         } else {
             // if the name doesn't follow the typical `asName` scheme we can't be confident it's
+            // really a "getter" method, so don't use it for a name
+            return null;
+        }
+    }
+
+    private static @Nullable String suggestNameFromNew(final String methodName, MethodInsnNode insn) {
+        if (!methodName.startsWith("new") || methodName.equals("new")) {
+            return null;
+        }
+
+        final @Nullable String result =
+                switch (insn.owner) {
+                    case "com/google/common/collect/Lists" -> "list";
+                    case "com/google/common/collect/Maps" -> "map";
+                    case "com/google/common/collect/Sets" -> "set";
+                    default -> null;
+                };
+        if (result != null) {
+            return result;
+        }
+
+        final String baseName = methodName.substring(3);
+
+        if (Character.isUpperCase(baseName.charAt(0))) {
+            return Character.toLowerCase(baseName.charAt(0)) + baseName.substring(1);
+        } else {
+            // if the name doesn't follow the typical `newName` scheme we can't be confident it's
+            // really a "getter" method, so don't use it for a name
+            return null;
+        }
+    }
+
+    private static @Nullable String suggestNameFromRead(final String methodName) {
+        if (!methodName.startsWith("read") || methodName.equals("read")) {
+            return null;
+        }
+
+        final String baseName = methodName.substring(4);
+
+        if (Character.isUpperCase(baseName.charAt(0))) {
+            return Character.toLowerCase(baseName.charAt(0)) + baseName.substring(1);
+        } else {
+            // if the name doesn't follow the typical `readName` scheme we can't be confident it's
             // really a "getter" method, so don't use it for a name
             return null;
         }
