@@ -38,6 +38,7 @@ import io.papermc.codebook.pages.FixJarPage;
 import io.papermc.codebook.pages.InspectJarPage;
 import io.papermc.codebook.pages.MergeMappingsPage;
 import io.papermc.codebook.pages.RemapJarPage;
+import io.papermc.codebook.pages.RemapLvtPage;
 import io.papermc.codebook.pages.UnpickPage;
 import io.papermc.codebook.util.IOUtil;
 import java.nio.file.Files;
@@ -75,7 +76,8 @@ public final class CodeBook {
                 InspectJarPage.class,
                 RemapJarPage.class,
                 FixJarPage.class,
-                UnpickPage.class);
+                UnpickPage.class,
+                RemapLvtPage.class);
 
         Module module = this.createInitialModule(tempDir);
         for (final var page : book) {
