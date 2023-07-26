@@ -65,3 +65,13 @@ is,io/paper/Paper,()Z,
 has,io/paper/Paper,(Lcom/OptionSpec;)Z,hasOptionSpec
 has,io/paper/Paper,(Lcom/OptionSpec;)I,
 has,io/paper/Paper,()Z,
+# random methods
+nextInt,net/minecraft/util/RandomSource,()I,randomInt
+nextInteger,net/minecraft/util/RandomSource,()I,randomInteger
+nextInt,net/minecraft/util/RandomSource,()L,
+nextInt,io/paper/Paper,()I,
+nextIntBetween,net/minecraft/util/RandomSource,(II)I,randomInt
+nextIntBetween,net/minecraft/util/RandomSource,(II)L,
+nextBoolean,net/minecraft/util/RandomSource,()Z,randomBoolean
+nextInt,net/minecraft/util/Mth,(Lnet/minecraft/util/RandomSource;)I,randomInt
+nextInt,net/minecraft/util/Mth,(I)I,
