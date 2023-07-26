@@ -32,6 +32,7 @@ import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.generic.HypoHydration;
 import dev.denwav.hypo.hydrate.generic.MethodClosure;
 import dev.denwav.hypo.model.data.ClassData;
+import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.HypoKey;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
@@ -224,6 +225,15 @@ public final class LvtNamer {
             if (lvt.name.equals("this")) {
                 continue;
             }
+
+            final int paramIndexFromLvt = fromLvtIndex(lvt.index, method);
+            if (paramIndexFromLvt != -1) {
+                // Don't touch record constructor parameter names
+                if (parentClass.kind() == ClassKind.RECORD && method.name().equals("<init>")) {
+                    continue;
+                }
+            }
+
             if (ourCapturedLvtIndex != -1) {
                 // Check if we've already set this name, if so, skip it
                 if (find(ourCapturedLvts, lvt.index, ourCapturedLvtIndex) != -1) {
@@ -245,7 +255,6 @@ public final class LvtNamer {
             scopedNames.add(suggestedName);
 
             // Also update the parameters table if this LVT slot is a parameter
-            final int paramIndexFromLvt = fromLvtIndex(lvt.index, method);
             if (paramIndexFromLvt != -1 && node.parameters != null && node.parameters.size() > paramIndexFromLvt) {
                 node.parameters.get(paramIndexFromLvt).name = suggestedName;
             }
