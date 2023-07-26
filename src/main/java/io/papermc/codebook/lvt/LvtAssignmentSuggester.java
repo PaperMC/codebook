@@ -30,18 +30,22 @@ import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
+import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.MemberData;
 import dev.denwav.hypo.model.data.types.JvmType;
 import dev.denwav.hypo.model.data.types.PrimitiveType;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import org.cadixdev.bombe.type.FieldType;
+import org.cadixdev.bombe.type.MethodDescriptor;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Opcodes;
@@ -56,6 +60,7 @@ public final class LvtAssignmentSuggester {
             LvtAssignmentSuggester::suggestGeneric,
             LvtAssignmentSuggester::suggestNameFromRecord,
             LvtAssignmentSuggester::suggestNameForRandomSource,
+            LvtAssignmentSuggester::suggestNameForMcMthRandom,
             LvtAssignmentSuggester::suggestNameFromGetter,
             LvtAssignmentSuggester::suggestNameFromVerbBoolean,
             LvtAssignmentSuggester::suggestNameFromSingleWorldVerbBoolean,
@@ -137,9 +142,19 @@ public final class LvtAssignmentSuggester {
             final @Nullable HypoContext context,
             final AsmClassData owner,
             final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final MethodInsnNode insn) throws IOException {
         final String methodName = method.name();
-        if (!"net/minecraft/util/RandomSource".equals(insn.owner) || insn.desc == null) {
+        if (insn.desc == null) return null;
+        @Nullable String ownerClass = insn.owner;
+        if (context != null) {
+            final @Nullable ClassData randomSourceData =
+                    context.getContextProvider().findClass("net/minecraft/util/RandomSource");
+            if (randomSourceData != null && owner.doesExtendOrImplement(randomSourceData)) {
+                ownerClass = "net/minecraft/util/RandomSource";
+            }
+        }
+
+        if (!"net/minecraft/util/RandomSource".equals(ownerClass)) {
             return null;
         }
 
@@ -147,25 +162,68 @@ public final class LvtAssignmentSuggester {
             return null;
         }
 
-        final Function<Set<String>, Predicate<String>> equalsAny = strings -> s -> strings.stream().anyMatch(Predicate.isEqual(s));
-        final @Nullable Predicate<String> expectedNextWord = switch (Type.getReturnType(insn.desc).getDescriptor()) {
-            case "B" -> equalsAny.apply(Set.of("Byte"));
-            case "C" -> equalsAny.apply(Set.of("Char", "Character"));
-            case "D" -> equalsAny.apply(Set.of("Double"));
-            case "F" -> equalsAny.apply(Set.of("Float"));
-            case "I" -> equalsAny.apply(Set.of("Int", "Integer"));
-            case "L" -> equalsAny.apply(Set.of("Long"));
-            case "S" -> equalsAny.apply(Set.of("Short"));
-            case "Z" -> equalsAny.apply(Set.of("Bool", "Boolean"));
-            default -> null;
-        };
+        return createNextRandomName(methodName, insn);
+    }
+
+    private static @Nullable String suggestNameForMcMthRandom(
+            final @Nullable HypoContext context,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) throws IOException {
+        final String methodName = method.name();
+        if (!"net/minecraft/util/Mth".equals(insn.owner) || insn.desc == null) {
+            return null;
+        }
+
+        if (!methodName.startsWith("next") || "next".equals(methodName)) {
+            return null;
+        }
+
+        final MethodDescriptor descriptor = MethodDescriptor.of(insn.desc);
+        final List<FieldType> paramTypes = descriptor.getParamTypes();
+        if (paramTypes.isEmpty()
+                || !"Lnet/minecraft/util/RandomSource;".equals(paramTypes.get(0).toString())) {
+            return null;
+        }
+
+        return createNextRandomName(methodName, insn);
+    }
+
+    private static @Nullable String createNextRandomName(final String methodName, final MethodInsnNode insn) {
+        final @Nullable Predicate<String> expectedNextWord = expectedNextWordForRandomGen(insn);
         if (expectedNextWord == null) {
             return null;
         }
 
+        final String nextWord = getNextWord("next".length(), methodName);
+        if (expectedNextWord.test(nextWord)) {
+            return "random" + nextWord;
+        }
+        return null;
+    }
+
+    private static Predicate<String> equalsAny(final String... strings) {
+        return s -> Arrays.stream(strings).anyMatch(Predicate.isEqual(s));
+    }
+
+    private static @Nullable Predicate<String> expectedNextWordForRandomGen(final MethodInsnNode insn) {
+        return switch (Type.getReturnType(insn.desc).getDescriptor()) {
+            case "B" -> equalsAny("Byte");
+            case "C" -> equalsAny("Char", "Character");
+            case "D" -> equalsAny("Double");
+            case "F" -> equalsAny("Float");
+            case "I" -> equalsAny("Int", "Integer");
+            case "J" -> equalsAny("Long");
+            case "S" -> equalsAny("Short");
+            case "Z" -> equalsAny("Bool", "Boolean");
+            default -> null;
+        };
+    }
+
+    private static String getNextWord(final int start, final String str) {
         final StringBuilder nextWord = new StringBuilder();
-        for (int i = "next".length(); i < methodName.length(); i++) {
-            final char ch = methodName.charAt(i);
+        for (int i = start; i < str.length(); i++) {
+            final char ch = str.charAt(i);
             if (nextWord.isEmpty()) {
                 nextWord.append(ch);
             } else if (!Character.isUpperCase(ch)) {
@@ -174,11 +232,7 @@ public final class LvtAssignmentSuggester {
                 break;
             }
         }
-
-        if (expectedNextWord.test(nextWord.toString())) {
-            return "random" + nextWord;
-        }
-        return null;
+        return nextWord.toString();
     }
 
     private static @Nullable String suggestNameFromGetter(
