@@ -25,6 +25,8 @@ package io.papermc.codebook.lvt;
 import static dev.denwav.hypo.model.data.MethodDescriptor.parseDescriptor;
 import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
+import dev.denwav.hypo.asm.AsmClassData;
+import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.MethodData;
@@ -117,7 +119,8 @@ public final class LvtSuggester {
             return null;
         }
 
-        return LvtAssignmentSuggester.suggestNameFromAssignment(context, owner, method, methodInsnNode);
+        return LvtAssignmentSuggester.suggestNameFromAssignment(
+                context, (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
     }
 
     private static @Nullable MethodData findMethod(

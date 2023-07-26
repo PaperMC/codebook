@@ -27,12 +27,12 @@ import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
 import static io.papermc.codebook.lvt.LvtUtil.decapitalizeAlways;
 import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
+import dev.denwav.hypo.asm.AsmClassData;
+import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
-import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.MemberData;
-import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
 import dev.denwav.hypo.model.data.types.PrimitiveType;
 import java.io.IOException;
@@ -64,8 +64,8 @@ public final class LvtAssignmentSuggester {
 
     public static @Nullable String suggestNameFromAssignment(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn)
             throws IOException {
 
@@ -85,16 +85,16 @@ public final class LvtAssignmentSuggester {
         @Nullable
         String suggestName(
                 final @Nullable HypoContext context,
-                final ClassData owner,
-                final MethodData method,
+                final AsmClassData owner,
+                final AsmMethodData method,
                 final MethodInsnNode insn)
                 throws IOException;
     }
 
     private static @Nullable String suggestGeneric(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn) {
         return switch (method.name()) {
             case "hashCode" -> "hashCode";
@@ -107,8 +107,8 @@ public final class LvtAssignmentSuggester {
 
     private static @Nullable String suggestNameFromRecord(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn) {
         if (owner.kind() != ClassKind.RECORD) {
             return null;
@@ -130,8 +130,8 @@ public final class LvtAssignmentSuggester {
 
     private static @Nullable String suggestNameFromGetter(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("get") || methodName.equals("get")) {
@@ -154,8 +154,8 @@ public final class LvtAssignmentSuggester {
 
     private static @Nullable String suggestNameFromVerbBoolean(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn) {
         if (method.returnType() != PrimitiveType.BOOLEAN) {
             return null;
@@ -182,8 +182,8 @@ public final class LvtAssignmentSuggester {
 
     private static @Nullable String suggestNameFromSingleWorldVerbBoolean(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn)
             throws IOException {
         if (method.returnType() != PrimitiveType.BOOLEAN) {
@@ -253,8 +253,8 @@ public final class LvtAssignmentSuggester {
 
     private static @Nullable String suggestNameFromAs(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("as") || methodName.equals("as")) {
@@ -266,8 +266,8 @@ public final class LvtAssignmentSuggester {
 
     private static @Nullable String suggestNameFromNew(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("new") || methodName.equals("new")) {
@@ -290,8 +290,8 @@ public final class LvtAssignmentSuggester {
 
     private static @Nullable String suggestNameFromRead(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("read") || methodName.equals("read")) {
@@ -303,8 +303,8 @@ public final class LvtAssignmentSuggester {
 
     private static @Nullable String suggestNameFromLine(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn) {
         final String methodName = method.name();
         if (methodName.equals("readLine")) {
@@ -315,8 +315,8 @@ public final class LvtAssignmentSuggester {
 
     private static @Nullable String suggestNameFromStrings(
             final @Nullable HypoContext context,
-            final ClassData owner,
-            final MethodData method,
+            final AsmClassData owner,
+            final AsmMethodData method,
             final MethodInsnNode insn) {
         final String methodName = method.name();
 
