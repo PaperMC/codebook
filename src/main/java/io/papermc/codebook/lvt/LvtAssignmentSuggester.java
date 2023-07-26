@@ -41,8 +41,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import org.cadixdev.bombe.type.FieldType;
 import org.cadixdev.bombe.type.MethodDescriptor;
@@ -142,7 +140,8 @@ public final class LvtAssignmentSuggester {
             final @Nullable HypoContext context,
             final AsmClassData owner,
             final AsmMethodData method,
-            final MethodInsnNode insn) throws IOException {
+            final MethodInsnNode insn)
+            throws IOException {
         final String methodName = method.name();
         if (insn.desc == null) return null;
         @Nullable String ownerClass = insn.owner;
@@ -169,7 +168,8 @@ public final class LvtAssignmentSuggester {
             final @Nullable HypoContext context,
             final AsmClassData owner,
             final AsmMethodData method,
-            final MethodInsnNode insn) throws IOException {
+            final MethodInsnNode insn)
+            throws IOException {
         final String methodName = method.name();
         if (!"net/minecraft/util/Mth".equals(insn.owner) || insn.desc == null) {
             return null;
