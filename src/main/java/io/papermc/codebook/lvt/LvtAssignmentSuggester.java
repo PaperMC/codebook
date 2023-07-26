@@ -168,7 +168,7 @@ public final class LvtAssignmentSuggester {
 
         final MethodDescriptor descriptor = MethodDescriptor.of(insn.desc);
         final List<FieldType> paramTypes = descriptor.getParamTypes();
-        if (paramTypes.size() > 1) {
+        if (paramTypes.size() != 1) {
             return null;
         }
         final String paramTypeDesc = paramTypes.get(0).toString();
