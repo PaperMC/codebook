@@ -39,9 +39,13 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
@@ -51,6 +55,7 @@ public final class LvtAssignmentSuggester {
     private static final List<NameSuggester> SUGGESTERS = List.of(
             LvtAssignmentSuggester::suggestGeneric,
             LvtAssignmentSuggester::suggestNameFromRecord,
+            LvtAssignmentSuggester::suggestNameForRandomSource,
             LvtAssignmentSuggester::suggestNameFromGetter,
             LvtAssignmentSuggester::suggestNameFromVerbBoolean,
             LvtAssignmentSuggester::suggestNameFromSingleWorldVerbBoolean,
@@ -125,6 +130,54 @@ public final class LvtAssignmentSuggester {
             }
         }
 
+        return null;
+    }
+
+    private static @Nullable String suggestNameForRandomSource(
+            final @Nullable HypoContext context,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
+        final String methodName = method.name();
+        if (!"net/minecraft/util/RandomSource".equals(insn.owner) || insn.desc == null) {
+            return null;
+        }
+
+        if (!methodName.startsWith("next") || "next".equals(methodName)) {
+            return null;
+        }
+
+        final Function<Set<String>, Predicate<String>> equalsAny = strings -> s -> strings.stream().anyMatch(Predicate.isEqual(s));
+        final @Nullable Predicate<String> expectedNextWord = switch (Type.getReturnType(insn.desc).getDescriptor()) {
+            case "B" -> equalsAny.apply(Set.of("Byte"));
+            case "C" -> equalsAny.apply(Set.of("Char", "Character"));
+            case "D" -> equalsAny.apply(Set.of("Double"));
+            case "F" -> equalsAny.apply(Set.of("Float"));
+            case "I" -> equalsAny.apply(Set.of("Int", "Integer"));
+            case "L" -> equalsAny.apply(Set.of("Long"));
+            case "S" -> equalsAny.apply(Set.of("Short"));
+            case "Z" -> equalsAny.apply(Set.of("Bool", "Boolean"));
+            default -> null;
+        };
+        if (expectedNextWord == null) {
+            return null;
+        }
+
+        final StringBuilder nextWord = new StringBuilder();
+        for (int i = "next".length(); i < methodName.length(); i++) {
+            final char ch = methodName.charAt(i);
+            if (nextWord.isEmpty()) {
+                nextWord.append(ch);
+            } else if (!Character.isUpperCase(ch)) {
+                nextWord.append(ch);
+            } else {
+                break;
+            }
+        }
+
+        if (expectedNextWord.test(nextWord.toString())) {
+            return "random" + nextWord;
+        }
         return null;
     }
 
