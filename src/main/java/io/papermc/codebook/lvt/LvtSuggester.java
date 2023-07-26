@@ -49,7 +49,8 @@ public final class LvtSuggester {
     private final HypoContext context;
     private final LvtAssignmentSuggester assignmentSuggester;
 
-    public LvtSuggester(final HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions) {
+    public LvtSuggester(final HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions)
+            throws IOException {
         this.context = context;
         this.assignmentSuggester = new LvtAssignmentSuggester(context, missedNameSuggestions);
     }

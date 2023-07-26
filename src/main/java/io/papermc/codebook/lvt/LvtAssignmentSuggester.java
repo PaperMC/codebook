@@ -56,8 +56,8 @@ public class LvtAssignmentSuggester {
     private final List<NameSuggester> suggesters = List.of(
             LvtAssignmentSuggester::suggestGeneric,
             LvtAssignmentSuggester::suggestNameFromRecord,
-            LvtAssignmentSuggester::suggestNameForRandomSource,
-            LvtAssignmentSuggester::suggestNameForMcMthRandom,
+            this::suggestNameForRandomSource,
+            this::suggestNameForMcMthRandom,
             LvtAssignmentSuggester::suggestNameFromGetter,
             LvtAssignmentSuggester::suggestNameFromVerbBoolean,
             this::suggestNameFromSingleWorldVerbBoolean,
@@ -70,10 +70,19 @@ public class LvtAssignmentSuggester {
     private final @Nullable HypoContext context;
     public final Map<String, AtomicInteger> missedNameSuggestions;
 
+    private final @Nullable ClassData randomSourceClass;
+
     public LvtAssignmentSuggester(
-            final @Nullable HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions) {
+            final @Nullable HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions)
+            throws IOException {
         this.context = context;
         this.missedNameSuggestions = missedNameSuggestions;
+
+        if (this.context != null) {
+            this.randomSourceClass = this.context.getContextProvider().findClass("net/minecraft/util/RandomSource");
+        } else {
+            this.randomSourceClass = null;
+        }
     }
 
     public @Nullable String suggestNameFromAssignment(
@@ -131,19 +140,13 @@ public class LvtAssignmentSuggester {
         return null;
     }
 
-    private static @Nullable String suggestNameForRandomSource(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn)
-            throws IOException {
+    private @Nullable String suggestNameForRandomSource(
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) throws IOException {
         final String methodName = method.name();
         if (insn.desc == null) return null;
         @Nullable String ownerClass = insn.owner;
-        if (context != null) {
-            final @Nullable ClassData randomSourceData =
-                    context.getContextProvider().findClass("net/minecraft/util/RandomSource");
-            if (randomSourceData != null && owner.doesExtendOrImplement(randomSourceData)) {
+        if (this.context != null) {
+            if (this.randomSourceClass != null && owner.doesExtendOrImplement(this.randomSourceClass)) {
                 ownerClass = "net/minecraft/util/RandomSource";
             }
         }
@@ -159,13 +162,10 @@ public class LvtAssignmentSuggester {
         return createNextRandomName(methodName, insn);
     }
 
-    private static @Nullable String suggestNameForMcMthRandom(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+    private @Nullable String suggestNameForMcMthRandom(
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         final String methodName = method.name();
-        if (!"net/minecraft/util/Mth".equals(insn.owner) || insn.desc == null) {
+        if (!owner.name().equals("net/minecraft/util/Mth")) {
             return null;
         }
 

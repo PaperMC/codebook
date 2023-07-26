@@ -62,7 +62,7 @@ public class LvtNamer {
     private final LvtSuggester lvtSuggester;
     public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
 
-    public LvtNamer(final HypoContext context, final MappingSet mappings) {
+    public LvtNamer(final HypoContext context, final MappingSet mappings) throws IOException {
         this.mappings = mappings;
         this.lvtSuggester = new LvtSuggester(context, this.missedNameSuggestions);
     }
