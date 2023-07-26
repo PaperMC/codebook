@@ -44,19 +44,17 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
-public class LvtSuggester {
+public final class LvtSuggester {
 
+    private final HypoContext context;
     private final LvtAssignmentSuggester assignmentSuggester;
 
-    public LvtSuggester(final Map<String, AtomicInteger> missedNameSuggestions) {
-        this.assignmentSuggester = new LvtAssignmentSuggester(missedNameSuggestions);
+    public LvtSuggester(final HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions) {
+        this.context = context;
+        this.assignmentSuggester = new LvtAssignmentSuggester(context, missedNameSuggestions);
     }
 
-    public String suggestName(
-            final HypoContext context,
-            final MethodNode node,
-            final LocalVariableNode lvt,
-            final Set<String> scopedNames)
+    public String suggestName(final MethodNode node, final LocalVariableNode lvt, final Set<String> scopedNames)
             throws IOException {
         @Nullable VarInsnNode assignmentNode = null;
         // `insn` could represent the first instruction, so check if there actually is a previous instruction
@@ -91,7 +89,7 @@ public class LvtSuggester {
         }
 
         if (assignmentNode != null) {
-            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(context, assignmentNode);
+            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(assignmentNode);
             if (suggestedName != null) {
                 return determineFinalName(suggestedName, scopedNames);
             }
@@ -99,7 +97,7 @@ public class LvtSuggester {
 
         // we couldn't determine a name from the assignment, so determine a name from the type
         final JvmType lvtType = toJvmType(lvt.desc);
-        return determineFinalName(LvtTypeSuggester.suggestNameFromType(context, lvtType), scopedNames);
+        return determineFinalName(LvtTypeSuggester.suggestNameFromType(this.context, lvtType), scopedNames);
     }
 
     private static String determineFinalName(final String suggestedName, final Set<String> scopedNames) {
@@ -126,8 +124,7 @@ public class LvtSuggester {
         }
     }
 
-    private @Nullable String suggestNameFromFirstAssignment(final HypoContext context, final VarInsnNode varInsn)
-            throws IOException {
+    private @Nullable String suggestNameFromFirstAssignment(final VarInsnNode varInsn) throws IOException {
         final AbstractInsnNode prev = varInsn.getPrevious();
         final int op = prev.getOpcode();
         if (op != Opcodes.INVOKESTATIC && op != Opcodes.INVOKEVIRTUAL && op != Opcodes.INVOKEINTERFACE) {
@@ -136,7 +133,7 @@ public class LvtSuggester {
 
         final MethodInsnNode methodInsnNode = (MethodInsnNode) prev;
 
-        final @Nullable ClassData owner = context.getContextProvider().findClass(methodInsnNode.owner);
+        final @Nullable ClassData owner = this.context.getContextProvider().findClass(methodInsnNode.owner);
         if (owner == null) {
             return null;
         }
@@ -147,7 +144,7 @@ public class LvtSuggester {
         }
 
         return this.assignmentSuggester.suggestNameFromAssignment(
-                context, (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
+                (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
     }
 
     private static @Nullable MethodData findMethod(

@@ -62,19 +62,18 @@ public class LvtNamer {
     private final LvtSuggester lvtSuggester;
     public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
 
-    public LvtNamer(final MappingSet mappings) {
+    public LvtNamer(final HypoContext context, final MappingSet mappings) {
         this.mappings = mappings;
-        this.lvtSuggester = new LvtSuggester(this.missedNameSuggestions);
+        this.lvtSuggester = new LvtSuggester(context, this.missedNameSuggestions);
     }
 
-    public void processClass(final HypoContext context, final AsmClassData classData) throws IOException {
+    public void processClass(final AsmClassData classData) throws IOException {
         for (final MethodData method : classData.methods()) {
-            this.fillNames(context, method, this.mappings);
+            this.fillNames(method);
         }
     }
 
-    public void fillNames(final HypoContext context, final MethodData method, final @Nullable MappingSet mappings)
-            throws IOException {
+    public void fillNames(final MethodData method) throws IOException {
         final @Nullable Set<String> names = method.get(SCOPED_NAMES);
         if (names != null) {
             // If scoped names is already filled out, this method has already been visited
@@ -132,11 +131,11 @@ public class LvtNamer {
         // This method (`fillNames`) will ensure the outer method has names defined in its scope first.
         // If the scope is already computed this is a no-op
         if (outerMethod != null) {
-            this.fillNames(context, outerMethod, mappings);
+            this.fillNames(outerMethod);
         }
 
         // we only need the mappings for determining if we should skip a local variable because we have a param mapping
-        final @Nullable ClassMapping<?, ?> classMapping = getClassMapping(mappings, parentClass.name());
+        final @Nullable ClassMapping<?, ?> classMapping = getClassMapping(this.mappings, parentClass.name());
         final @Nullable MethodMapping methodMapping =
                 getMethodMapping(classMapping, method.name(), method.descriptorText());
 
@@ -267,7 +266,7 @@ public class LvtNamer {
                 }
             }
 
-            final var suggestedName = this.lvtSuggester.suggestName(context, node, lvt, scopedNames);
+            final var suggestedName = this.lvtSuggester.suggestName(node, lvt, scopedNames);
             lvt.name = suggestedName;
             usedNames[usedNameIndex++] = new UsedLvtName(lvt.name, lvt.desc, lvt.index);
             scopedNames.add(suggestedName);

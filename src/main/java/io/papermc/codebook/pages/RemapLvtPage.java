@@ -51,7 +51,6 @@ public final class RemapLvtPage extends CodeBookPage {
     private final MappingSet mappings;
     private final Path tempDir;
     private final CodeBookContext context;
-    private final LvtNamer lvtNamer;
 
     @Inject
     public RemapLvtPage(
@@ -65,7 +64,6 @@ public final class RemapLvtPage extends CodeBookPage {
         this.mappings = mappings.reverse();
         this.tempDir = tempDir;
         this.context = context;
-        this.lvtNamer = new LvtNamer(this.mappings);
     }
 
     @Override
@@ -83,13 +81,16 @@ public final class RemapLvtPage extends CodeBookPage {
                     .register(LocalClassHydrator.create())
                     .hydrate(context);
 
-            final Path result = this.remapLvtWithContext(context);
+            final var lvtNamer = new LvtNamer(context, this.mappings);
+
+            final Path result = this.remapLvtWithContext(context, lvtNamer);
             this.bind(InputJar.KEY).to(result);
+
             if (this.context.logMissingLvtSuggestions()) {
-                this.lvtNamer.missedNameSuggestions.entrySet().stream()
-                        .sorted(Comparator.<Map.Entry<String, AtomicInteger>, Integer>comparing(
-                                        e -> e.getValue().get())
-                                .reversed())
+                final var comparator = Comparator.<Map.Entry<String, AtomicInteger>, Integer>comparing(
+                        e -> e.getValue().get());
+                lvtNamer.missedNameSuggestions.entrySet().stream()
+                        .sorted(comparator.reversed())
                         .forEach(s -> System.out.println("missed: " + s.getKey() + " -- " + s.getValue() + " times"));
             }
         } catch (final Exception e) {
@@ -107,9 +108,9 @@ public final class RemapLvtPage extends CodeBookPage {
                 .build();
     }
 
-    private Path remapLvtWithContext(final HypoContext context) throws IOException {
+    private Path remapLvtWithContext(final HypoContext context, final LvtNamer lvtNamer) throws IOException {
         for (final ClassData classData : context.getProvider().allClasses()) {
-            this.lvtNamer.processClass(context, (AsmClassData) classData);
+            lvtNamer.processClass((AsmClassData) classData);
         }
 
         final Path lvtRemapped = this.tempDir.resolve("lvtRemapped.jar");

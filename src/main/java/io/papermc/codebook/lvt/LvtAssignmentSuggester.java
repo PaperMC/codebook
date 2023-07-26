@@ -54,35 +54,34 @@ import org.objectweb.asm.tree.MethodInsnNode;
 
 public class LvtAssignmentSuggester {
 
-    private static final List<NameSuggester> SUGGESTERS = List.of(
+    private final List<NameSuggester> suggesters = List.of(
             LvtAssignmentSuggester::suggestGeneric,
             LvtAssignmentSuggester::suggestNameFromRecord,
             LvtAssignmentSuggester::suggestNameForRandomSource,
             LvtAssignmentSuggester::suggestNameForMcMthRandom,
             LvtAssignmentSuggester::suggestNameFromGetter,
             LvtAssignmentSuggester::suggestNameFromVerbBoolean,
-            LvtAssignmentSuggester::suggestNameFromSingleWorldVerbBoolean,
+            this::suggestNameFromSingleWorldVerbBoolean,
             LvtAssignmentSuggester::suggestNameFromAs,
             LvtAssignmentSuggester::suggestNameFromNew,
             LvtAssignmentSuggester::suggestNameFromRead,
             LvtAssignmentSuggester::suggestNameFromLine,
             LvtAssignmentSuggester::suggestNameFromStrings);
 
+    private final @Nullable HypoContext context;
     public final Map<String, AtomicInteger> missedNameSuggestions;
 
-    public LvtAssignmentSuggester(final Map<String, AtomicInteger> missedNameSuggestions) {
+    public LvtAssignmentSuggester(
+            final @Nullable HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions) {
+        this.context = context;
         this.missedNameSuggestions = missedNameSuggestions;
     }
 
     public @Nullable String suggestNameFromAssignment(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn)
-            throws IOException {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) throws IOException {
 
-        for (final NameSuggester suggester : SUGGESTERS) {
-            final @Nullable String suggestion = suggester.suggestName(context, owner, method, insn);
+        for (final NameSuggester suggester : this.suggesters) {
+            final @Nullable String suggestion = suggester.suggestName(owner, method, insn);
             if (suggestion != null) {
                 return suggestion;
             }
@@ -98,19 +97,12 @@ public class LvtAssignmentSuggester {
     private interface NameSuggester {
 
         @Nullable
-        String suggestName(
-                final @Nullable HypoContext context,
-                final AsmClassData owner,
-                final AsmMethodData method,
-                final MethodInsnNode insn)
+        String suggestName(final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn)
                 throws IOException;
     }
 
     private static @Nullable String suggestGeneric(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         return switch (method.name()) {
             case "hashCode" -> "hashCode";
             case "size" -> "size";
@@ -121,10 +113,7 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromRecord(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         if (owner.kind() != ClassKind.RECORD) {
             return null;
         }
@@ -240,10 +229,7 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromGetter(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("get") || methodName.equals("get")) {
             // If the method isn't `get<Thing>` - or if the method is just `get`
@@ -264,10 +250,7 @@ public class LvtAssignmentSuggester {
     private static final List<String> BOOL_METHOD_PREFIXES = List.of("is", "has", "can", "should");
 
     private static @Nullable String suggestNameFromVerbBoolean(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         if (method.returnType() != PrimitiveType.BOOLEAN) {
             return null;
         }
@@ -291,12 +274,8 @@ public class LvtAssignmentSuggester {
         }
     }
 
-    private static @Nullable String suggestNameFromSingleWorldVerbBoolean(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn)
-            throws IOException {
+    private @Nullable String suggestNameFromSingleWorldVerbBoolean(
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) throws IOException {
         if (method.returnType() != PrimitiveType.BOOLEAN) {
             return null;
         }
@@ -323,7 +302,7 @@ public class LvtAssignmentSuggester {
                 && fieldInsnNode.name != null
                 && isStringAllUppercase(fieldInsnNode.name)) {
 
-            final boolean isFinal = Optional.ofNullable(context)
+            final boolean isFinal = Optional.ofNullable(this.context)
                     .map(wrapFunction(ctx -> ctx.getContextProvider().findClass(fieldInsnNode.owner)))
                     .map(fieldOwner -> fieldOwner.field(fieldInsnNode.name, toJvmType(fieldInsnNode.desc)))
                     .map(MemberData::isFinal)
@@ -337,7 +316,7 @@ public class LvtAssignmentSuggester {
             if ("Lnet/minecraft/tags/TagKey;".equals(paramTypeDesc)) { // isTag is better than isTagKey
                 return "isTag";
             }
-            final String typeName = LvtTypeSuggester.suggestNameFromType(context, toJvmType(paramTypeDesc));
+            final String typeName = LvtTypeSuggester.suggestNameFromType(this.context, toJvmType(paramTypeDesc));
             return prefix + decapitalizeAlways(typeName, 0);
         }
     }
@@ -363,10 +342,7 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromAs(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("as") || methodName.equals("as")) {
             return null;
@@ -376,10 +352,7 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromNew(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("new") || methodName.equals("new")) {
             return null;
@@ -400,10 +373,7 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromRead(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("read") || methodName.equals("read")) {
             return null;
@@ -413,10 +383,7 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromLine(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         final String methodName = method.name();
         if (methodName.equals("readLine")) {
             return "line";
@@ -425,10 +392,7 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromStrings(
-            final @Nullable HypoContext context,
-            final AsmClassData owner,
-            final AsmMethodData method,
-            final MethodInsnNode insn) {
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
         final String methodName = method.name();
 
         if (methodName.startsWith("split")) {
