@@ -40,7 +40,8 @@ public record CodeBookContext(
         @Nullable @org.jetbrains.annotations.Nullable CodeBookResource constantsJar,
         @NotNull Path outputJar,
         boolean overwrite,
-        @NotNull CodeBookInput input) {
+        @NotNull CodeBookInput input,
+        boolean logMissingLvtSuggestions) {
 
     public static CodeBookContextBuilder builder() {
         return CodeBookContextBuilder.builder();
