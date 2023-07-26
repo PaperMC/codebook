@@ -39,6 +39,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
 public final class LvtSuggester {
@@ -46,20 +47,40 @@ public final class LvtSuggester {
     private LvtSuggester() {}
 
     public static String suggestName(
-            final HypoContext context, final LocalVariableNode lvt, final Set<String> scopedNames) throws IOException {
+            final HypoContext context,
+            final MethodNode node,
+            final LocalVariableNode lvt,
+            final Set<String> scopedNames)
+            throws IOException {
         @Nullable VarInsnNode assignmentNode = null;
-        AbstractInsnNode insn = lvt.start;
-        while (insn.getNext() != null) {
-            insn = insn.getNext();
-            final int op = insn.getOpcode();
-            if (op < Opcodes.ISTORE || op > Opcodes.ASTORE) {
-                continue;
+        // `insn` could represent the first instruction, so check if there actually is a previous instruction
+        if (lvt.start.getPrevious() != null) {
+            // In most cases the store instruction for a new local variable will happen directly before the label which
+            // marks the variable's start.
+            // We do this quick check before checking all instructions as a fallback.
+            // The most common exception is parameters, which start at 0
+            final AbstractInsnNode prev = lvt.start.getPrevious();
+            final int op = prev.getOpcode();
+            if (op >= Opcodes.ISTORE && op <= Opcodes.ASTORE) {
+                final var varInsn = (VarInsnNode) prev;
+                if (varInsn.var == lvt.index) {
+                    assignmentNode = varInsn;
+                }
             }
+        }
 
-            final var varInsn = (VarInsnNode) insn;
-            if (varInsn.var == lvt.index) {
-                assignmentNode = varInsn;
-                break;
+        if (assignmentNode == null) {
+            for (final AbstractInsnNode insn : node.instructions) {
+                final int op = insn.getOpcode();
+                if (op < Opcodes.ISTORE || op > Opcodes.ASTORE) {
+                    continue;
+                }
+
+                final var varInsn = (VarInsnNode) insn;
+                if (varInsn.var == lvt.index) {
+                    assignmentNode = varInsn;
+                    break;
+                }
             }
         }
 

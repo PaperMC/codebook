@@ -251,7 +251,7 @@ public final class LvtNamer {
                 }
             }
 
-            final var suggestedName = LvtSuggester.suggestName(context, lvt, scopedNames);
+            final var suggestedName = LvtSuggester.suggestName(context, node, lvt, scopedNames);
             lvt.name = suggestedName;
             usedNames[usedNameIndex++] = new UsedLvtName(lvt.name, lvt.desc, lvt.index);
             scopedNames.add(suggestedName);
