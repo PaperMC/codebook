@@ -111,7 +111,7 @@ public final class LvtSuggester {
         if (ownerClass != null && ownerClass.kind() == ClassKind.RECORD) {
             return LvtAssignmentSuggester.suggestNameFromRecord(name);
         } else {
-            return LvtAssignmentSuggester.suggestNameFromAssignment(name, methodInsnNode);
+            return LvtAssignmentSuggester.suggestNameFromAssignment(context, name, methodInsnNode);
         }
     }
 

@@ -22,16 +22,32 @@
 
 package io.papermc.codebook.lvt;
 
+import static dev.denwav.hypo.asm.HypoAsmUtil.toJvmType;
+import static dev.denwav.hypo.model.HypoModelUtil.wrapFunction;
+import static org.objectweb.asm.Type.getType;
+
+import dev.denwav.hypo.core.HypoContext;
+import dev.denwav.hypo.model.data.MemberData;
+import dev.denwav.hypo.model.data.MethodDescriptor;
+import dev.denwav.hypo.model.data.types.JvmType;
+import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 
 public final class LvtAssignmentSuggester {
 
     private LvtAssignmentSuggester() {}
 
-    public static @Nullable String suggestNameFromAssignment(final String methodName, final MethodInsnNode insn) {
+    public static @Nullable String suggestNameFromAssignment(
+            final @Nullable HypoContext context, final String methodName, final MethodInsnNode insn)
+            throws IOException {
         @Nullable String suggested = suggestGeneric(methodName);
         if (suggested != null) {
             return suggested;
@@ -43,6 +59,11 @@ public final class LvtAssignmentSuggester {
         }
 
         suggested = suggestNameFromVerbBoolean(methodName, insn);
+        if (suggested != null) {
+            return suggested;
+        }
+
+        suggested = suggestNameFromSingleWorldVerbBoolean(context, methodName, insn);
         if (suggested != null) {
             return suggested;
         }
@@ -118,7 +139,7 @@ public final class LvtAssignmentSuggester {
             return null;
         }
 
-        String prefix = null;
+        @Nullable String prefix = null;
         for (final String possiblePrefix : BOOL_METHOD_PREFIXES) {
             if (!possiblePrefix.equals(methodName) && methodName.startsWith(possiblePrefix)) {
                 prefix = possiblePrefix;
@@ -134,6 +155,74 @@ public final class LvtAssignmentSuggester {
         } else {
             return null;
         }
+    }
+
+    private static @Nullable String suggestNameFromSingleWorldVerbBoolean(
+            final @Nullable HypoContext context, final String methodName, final MethodInsnNode insn)
+            throws IOException {
+        if (insn.desc == null || !insn.desc.endsWith("Z")) {
+            return null;
+        }
+
+        final String prefix;
+        if (methodName.equals("is")) {
+            prefix = "is";
+        } else if (methodName.equals("has")) {
+            prefix = "has";
+        } else {
+            return null;
+        }
+
+        final MethodDescriptor descriptor = MethodDescriptor.parseDescriptor(insn.desc);
+        final List<JvmType> paramTypes = descriptor.getParams();
+        if (paramTypes.size() != 1) {
+            return null;
+        }
+        final String paramTypeDesc = paramTypes.get(0).asInternalName();
+
+        final AbstractInsnNode prev = insn.getPrevious();
+        if (prev instanceof final FieldInsnNode fieldInsnNode
+                && fieldInsnNode.getOpcode() == Opcodes.GETSTATIC
+                && fieldInsnNode.name != null
+                && isStringAllUppercase(fieldInsnNode.name)) {
+
+            final boolean isFinal = Optional.ofNullable(context)
+                    .map(wrapFunction(ctx -> ctx.getContextProvider().findClass(fieldInsnNode.owner)))
+                    .map(owner -> owner.field(fieldInsnNode.name, toJvmType(getType(fieldInsnNode.desc))))
+                    .map(MemberData::isFinal)
+                    .orElse(false);
+            if (!isFinal) {
+                return null;
+            }
+
+            return prefix + convertStaticFieldNameToLocalVarName(fieldInsnNode);
+        } else {
+            if ("Lnet/minecraft/tags/TagKey;".equals(paramTypeDesc)) { // isTag is better than isTagKey
+                return "isTag";
+            }
+            final String typeName = LvtTypeSuggester.suggestNameFromType(context, toJvmType(getType(paramTypeDesc)));
+            return prefix + Character.toUpperCase(typeName.charAt(0)) + typeName.substring(1);
+        }
+    }
+
+    private static String convertStaticFieldNameToLocalVarName(final FieldInsnNode fieldInsnNode) {
+        final StringBuilder output = new StringBuilder();
+        for (final String s : fieldInsnNode.name.split("_")) {
+            output.append(s.charAt(0)).append(s.substring(1).toLowerCase(Locale.ENGLISH));
+        }
+        return output.toString();
+    }
+
+    private static boolean isStringAllUppercase(final String input) {
+        for (int i = 0; i < input.length(); i++) {
+            final char ch = input.charAt(i);
+            if (Character.isAlphabetic(ch)) {
+                if (!Character.isUpperCase(ch)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static @Nullable String suggestNameFromAs(final String methodName) {
@@ -152,7 +241,7 @@ public final class LvtAssignmentSuggester {
         }
     }
 
-    private static @Nullable String suggestNameFromNew(final String methodName, MethodInsnNode insn) {
+    private static @Nullable String suggestNameFromNew(final String methodName, final MethodInsnNode insn) {
         if (!methodName.startsWith("new") || methodName.equals("new")) {
             return null;
         }
@@ -202,7 +291,7 @@ public final class LvtAssignmentSuggester {
         return null;
     }
 
-    private static final Type stringType = Type.getType("Ljava/lang/String;");
+    private static final Type stringType = getType("Ljava/lang/String;");
 
     private static @Nullable String suggestNameFromStrings(final String methodName, final MethodInsnNode insn) {
         if (methodName.startsWith("split")) {

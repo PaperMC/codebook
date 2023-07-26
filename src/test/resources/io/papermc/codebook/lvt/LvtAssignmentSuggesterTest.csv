@@ -58,3 +58,10 @@ hasSomeProperty,io/paper/Paper,()Z,hasSomeProperty
 should,io/paper/Paper,()Z,
 shouldDoSomething,io/paper/Paper,()Ljava/lang/String;,
 shouldDoSomething,io/paper/Paper,()Z,shouldDoSomething
+# single-word bool methods is;has,,,
+is,io/paper/Paper,(Lcom/Block;)Z,isBlock
+is,io/paper/Paper,(Lcom/Block;I)Z,
+is,io/paper/Paper,()Z,
+has,io/paper/Paper,(Lcom/OptionSpec;)Z,hasOptionSpec
+has,io/paper/Paper,(Lcom/OptionSpec;)I,
+has,io/paper/Paper,()Z,

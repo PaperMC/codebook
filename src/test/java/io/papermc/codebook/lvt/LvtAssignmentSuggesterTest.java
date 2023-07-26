@@ -24,6 +24,7 @@ package io.papermc.codebook.lvt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.IOException;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvFileSource;
@@ -34,12 +35,10 @@ class LvtAssignmentSuggesterTest {
     @ParameterizedTest
     @CsvFileSource(resources = "/io/papermc/codebook/lvt/LvtAssignmentSuggesterTest.csv", numLinesToSkip = 1)
     public void testSuggester(
-            final String methodName,
-            final String methodOwner,
-            final String methodDescriptor,
-            final String expectedName) {
+            final String methodName, final String methodOwner, final String methodDescriptor, final String expectedName)
+            throws IOException {
         final @Nullable String result = LvtAssignmentSuggester.suggestNameFromAssignment(
-                methodName, new MethodInsnNode(-1, methodOwner, methodName, methodDescriptor));
+                null, methodName, new MethodInsnNode(-1, methodOwner, methodName, methodDescriptor));
         assertEquals(expectedName, result);
     }
 }

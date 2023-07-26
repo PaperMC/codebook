@@ -37,7 +37,8 @@ public final class LvtTypeSuggester {
 
     private LvtTypeSuggester() {}
 
-    public static String suggestNameFromType(final HypoContext context, final JvmType type) throws IOException {
+    public static String suggestNameFromType(final @Nullable HypoContext context, final JvmType type)
+            throws IOException {
         if (type instanceof PrimitiveType) {
             return switch ((PrimitiveType) type) {
                 case CHAR -> "c";
@@ -74,7 +75,8 @@ public final class LvtTypeSuggester {
         }
     }
 
-    private static String suggestNameFromClassType(final HypoContext context, final ClassType type) throws IOException {
+    private static String suggestNameFromClassType(final @Nullable HypoContext context, final ClassType type)
+            throws IOException {
         final String name = type.asInternalName();
         if (name.equals("Ljava/lang/String;")) {
             return "string";
@@ -85,18 +87,23 @@ public final class LvtTypeSuggester {
         }
 
         // TODO Try to determine name from signature, rather than just descriptor
-        final @Nullable ClassData typeClass = context.getContextProvider().findClass(type);
-        if (typeClass != null) {
-            @Nullable final ClassData listClass = context.getContextProvider().findClass("java/util/List");
-            @Nullable final ClassData setClass = context.getContextProvider().findClass("java/util/Set");
-            @Nullable final ClassData mapClass = context.getContextProvider().findClass("java/util/Map");
+        if (context != null) {
+            final @Nullable ClassData typeClass = context.getContextProvider().findClass(type);
+            if (typeClass != null) {
+                @Nullable
+                final ClassData listClass = context.getContextProvider().findClass("java/util/List");
+                @Nullable
+                final ClassData setClass = context.getContextProvider().findClass("java/util/Set");
+                @Nullable
+                final ClassData mapClass = context.getContextProvider().findClass("java/util/Map");
 
-            if (listClass != null && typeClass.doesImplement(listClass)) {
-                return "list";
-            } else if (setClass != null && typeClass.doesImplement(setClass)) {
-                return "set";
-            } else if (mapClass != null && typeClass.doesImplement(mapClass)) {
-                return "map";
+                if (listClass != null && typeClass.doesImplement(listClass)) {
+                    return "list";
+                } else if (setClass != null && typeClass.doesImplement(setClass)) {
+                    return "set";
+                } else if (mapClass != null && typeClass.doesImplement(mapClass)) {
+                    return "map";
+                }
             }
         }
 
