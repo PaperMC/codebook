@@ -61,6 +61,11 @@ public final class LvtAssignmentSuggester {
             return suggested;
         }
 
+        suggested = suggestNameFromDistanceToSqr(methodName, insn);
+        if (suggested != null) {
+            return suggested;
+        }
+
         suggested = suggestNameFromStrings(methodName, insn);
         return suggested;
     }
@@ -169,6 +174,14 @@ public final class LvtAssignmentSuggester {
             return "line";
         }
         return null;
+    }
+
+    private static @Nullable String suggestNameFromDistanceToSqr(final String methodName, final MethodInsnNode insn) {
+        if (!"distanceToSqr".equals(methodName) || insn.desc == null || !(insn.desc.endsWith("D") || insn.desc.endsWith("I") || insn.desc.endsWith("F"))) {
+            return null;
+        }
+
+        return "distanceSqr";
     }
 
     private static final Type stringType = Type.getType("Ljava/lang/String;");
