@@ -41,7 +41,7 @@ public final class LvtAssignmentSuggester {
             return suggested;
         }
 
-        suggested = suggestNameFromIs(methodName, insn);
+        suggested = suggestNameFromIsOrHas(methodName, insn);
         if (suggested != null) {
             return suggested;
         }
@@ -110,16 +110,21 @@ public final class LvtAssignmentSuggester {
         }
     }
 
-    private static @Nullable String suggestNameFromIs(final String methodName, final MethodInsnNode insn) {
+    private static @Nullable String suggestNameFromIsOrHas(final String methodName, final MethodInsnNode insn) {
         if (insn.desc == null || !insn.desc.endsWith("Z")) { // only handle methods that return booleans
             return null;
         }
 
-        if (!methodName.startsWith("is") || methodName.equals("is")) {
+        final String prefix;
+        if (!"is".equals(methodName) && methodName.startsWith("is")) {
+            prefix = "is";
+        } else if (!"has".equals(methodName) && methodName.startsWith("has")) {
+            prefix = "has";
+        } else {
             return null;
         }
 
-        if (Character.isUpperCase(methodName.charAt(2))) {
+        if (Character.isUpperCase(methodName.charAt(prefix.length()))) {
             return methodName;
         } else {
             return null;
