@@ -42,10 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Predicate;
-import org.cadixdev.bombe.type.FieldType;
-import org.cadixdev.bombe.type.MethodDescriptor;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -121,7 +118,7 @@ public final class LvtAssignmentSuggester {
         if (owner.kind() != ClassKind.RECORD) {
             return null;
         }
-        final @Nullable List<@NotNull FieldData> components = owner.recordComponents();
+        final @Nullable List<FieldData> components = owner.recordComponents();
         if (components == null) {
             return null;
         }
@@ -168,8 +165,7 @@ public final class LvtAssignmentSuggester {
             final @Nullable HypoContext context,
             final AsmClassData owner,
             final AsmMethodData method,
-            final MethodInsnNode insn)
-            throws IOException {
+            final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!"net/minecraft/util/Mth".equals(insn.owner) || insn.desc == null) {
             return null;
@@ -179,10 +175,8 @@ public final class LvtAssignmentSuggester {
             return null;
         }
 
-        final MethodDescriptor descriptor = MethodDescriptor.of(insn.desc);
-        final List<FieldType> paramTypes = descriptor.getParamTypes();
-        if (paramTypes.isEmpty()
-                || !"Lnet/minecraft/util/RandomSource;".equals(paramTypes.get(0).toString())) {
+        final List<JvmType> params = method.params();
+        if (params.isEmpty() || !params.get(0).asInternalName().equals("Lnet/minecraft/util/RandomSource;")) {
             return null;
         }
 
