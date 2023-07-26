@@ -45,6 +45,7 @@ getOrCreate,io/paper/Paper,()Ljava/lang/String;,
 gettingBetter,io/paper/Paper,()Ljava/lang/String;,
 as,io/paper/paper,()Ljava/lang/String;,
 ass,io/paper/paper,()Ljava/lang/String;,
+# is;can;has;should methods that return a bool
 is,io/paper/Paper,()Z,
 isValid,io/paper/Paper,()Z,isValid
 isValid,io/paper/Paper,()Ljava/lang/String;,
@@ -54,3 +55,6 @@ canDoSomething,io/paper/Paper,()Z,canDoSomething
 has,io/paper/Paper,()Z,
 hasSomeProperty,io/paper/Paper,()Ljava/lang/String;,
 hasSomeProperty,io/paper/Paper,()Z,hasSomeProperty
+should,io/paper/Paper,()Z,
+shouldDoSomething,io/paper/Paper,()Ljava/lang/String;,
+shouldDoSomething,io/paper/Paper,()Z,shouldDoSomething

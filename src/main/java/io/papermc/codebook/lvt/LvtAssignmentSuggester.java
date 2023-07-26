@@ -22,6 +22,7 @@
 
 package io.papermc.codebook.lvt;
 
+import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.MethodInsnNode;
@@ -110,21 +111,20 @@ public final class LvtAssignmentSuggester {
         }
     }
 
+    private static final List<String> BOOL_METHOD_PREFIXES = List.of("is", "has", "can", "should");
     private static @Nullable String suggestNameFromVerbBoolean(final String methodName, final MethodInsnNode insn) {
         if (insn.desc == null || !insn.desc.endsWith("Z")) { // only handle methods that return booleans
             return null;
         }
 
-        final String prefix;
-        if (!"is".equals(methodName) && methodName.startsWith("is")) {
-            prefix = "is";
-        } else if (!"has".equals(methodName) && methodName.startsWith("has")) {
-            prefix = "has";
-        } else if (!"can".equals(methodName) && methodName.startsWith("can")) {
-            prefix = "can";
-        } else if (!"should".equals(methodName) && methodName.startsWith("should")) {
-            prefix = "should";
-        } else {
+        String prefix = null;
+        for (final String possiblePrefix : BOOL_METHOD_PREFIXES) {
+            if (!possiblePrefix.equals(methodName) && methodName.startsWith(possiblePrefix)) {
+                prefix = possiblePrefix;
+                break;
+            }
+        }
+        if (prefix == null) {
             return null;
         }
 
