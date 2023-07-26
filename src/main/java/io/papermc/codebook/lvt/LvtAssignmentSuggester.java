@@ -22,7 +22,9 @@
 
 package io.papermc.codebook.lvt;
 
-import java.util.List;
+import static dev.denwav.hypo.asm.HypoAsmUtil.toJvmType;
+import static org.objectweb.asm.Type.getType;
+
 import dev.denwav.hypo.core.HypoContext;
 import java.io.IOException;
 import java.util.List;
@@ -38,14 +40,13 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 
-import static dev.denwav.hypo.asm.HypoAsmUtil.toJvmType;
-import static org.objectweb.asm.Type.getType;
-
 public final class LvtAssignmentSuggester {
 
     private LvtAssignmentSuggester() {}
 
-    public static @Nullable String suggestNameFromAssignment(final @Nullable HypoContext context, final String methodName, final MethodInsnNode insn) throws IOException {
+    public static @Nullable String suggestNameFromAssignment(
+            final @Nullable HypoContext context, final String methodName, final MethodInsnNode insn)
+            throws IOException {
         @Nullable String suggested = suggestGeneric(methodName);
         if (suggested != null) {
             return suggested;
@@ -156,12 +157,17 @@ public final class LvtAssignmentSuggester {
     }
 
     private static final List<String> SINGLE_WORD_BOOL_METHOD_NAMES = List.of("is", "has");
-    private static @Nullable String suggestNameFromSingleWorldVerbBoolean(final @Nullable HypoContext context, final String methodName, final MethodInsnNode insn) throws IOException {
+
+    private static @Nullable String suggestNameFromSingleWorldVerbBoolean(
+            final @Nullable HypoContext context, final String methodName, final MethodInsnNode insn)
+            throws IOException {
         if (insn.desc == null || !insn.desc.endsWith("Z")) {
             return null;
         }
 
-        final Optional<String> prefix = SINGLE_WORD_BOOL_METHOD_NAMES.stream().filter(Predicate.isEqual(methodName)).findFirst();
+        final Optional<String> prefix = SINGLE_WORD_BOOL_METHOD_NAMES.stream()
+                .filter(Predicate.isEqual(methodName))
+                .findFirst();
         if (prefix.isEmpty()) {
             return null;
         }
@@ -174,7 +180,10 @@ public final class LvtAssignmentSuggester {
         final String paramTypeDesc = paramTypes.get(0).toString();
 
         final AbstractInsnNode prev = insn.getPrevious();
-        if (prev instanceof final FieldInsnNode fieldInsnNode && fieldInsnNode.getOpcode() == Opcodes.GETSTATIC && fieldInsnNode.name != null && areStringAlphasUppercase(fieldInsnNode.name)) {
+        if (prev instanceof final FieldInsnNode fieldInsnNode
+                && fieldInsnNode.getOpcode() == Opcodes.GETSTATIC
+                && fieldInsnNode.name != null
+                && areStringAlphasUppercase(fieldInsnNode.name)) {
             return prefix.get() + convertStaticFieldNameToLocalVarName(fieldInsnNode);
         } else {
             if ("Lnet/minecraft/tags/TagKey;".equals(paramTypeDesc)) { // isTag is better than isTagKey
@@ -188,9 +197,7 @@ public final class LvtAssignmentSuggester {
     private static String convertStaticFieldNameToLocalVarName(final FieldInsnNode fieldInsnNode) {
         final StringBuilder output = new StringBuilder();
         for (final String s : fieldInsnNode.name.split("_")) {
-            output
-                .append(s.charAt(0))
-                .append(s.substring(1).toLowerCase(Locale.ENGLISH));
+            output.append(s.charAt(0)).append(s.substring(1).toLowerCase(Locale.ENGLISH));
         }
         return output.toString();
     }
