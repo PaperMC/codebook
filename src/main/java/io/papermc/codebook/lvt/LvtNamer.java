@@ -146,12 +146,14 @@ public final class LvtNamer {
         // Keep track of method parameter mappings that are present, and add them to the current scope
         // These are names which we can assume to be trusted
         // TODO: We cannot trust these names in local classes or lambda expressions
-        for (int i = 0; i < method.params().size(); i++) {
-            final int paramLvtIndex = toLvtIndex(i, method);
-            final @Nullable MethodParameterMapping paramMapping = getParameterMapping(methodMapping, paramLvtIndex);
-            if (paramMapping != null) {
-                paramLvtsWithNames[paramIndex++] = paramLvtIndex;
-                scopedNames.add(paramMapping.getDeobfuscatedName());
+        if (methodMapping != null) {
+            for (int i = 0; i < method.params().size(); i++) {
+                final int paramLvtIndex = toLvtIndex(i, method);
+                final @Nullable MethodParameterMapping paramMapping = getParameterMapping(methodMapping, paramLvtIndex);
+                if (paramMapping != null) {
+                    paramLvtsWithNames[paramIndex++] = paramLvtIndex;
+                    scopedNames.add(paramMapping.getDeobfuscatedName());
+                }
             }
         }
 
@@ -236,7 +238,7 @@ public final class LvtNamer {
 
             if (ourCapturedLvtIndex != -1) {
                 // Check if we've already set this name, if so, skip it
-                if (find(ourCapturedLvts, lvt.index, ourCapturedLvtIndex) != -1) {
+                if (find(ourCapturedLvts, lvt.index) != -1) {
                     continue;
                 }
             }
@@ -249,7 +251,7 @@ public final class LvtNamer {
                 }
             }
 
-            final var suggestedName = LvtSuggester.suggestName(context, lvt, node, scopedNames);
+            final var suggestedName = LvtSuggester.suggestName(context, lvt, scopedNames);
             lvt.name = suggestedName;
             usedNames[usedNameIndex++] = new UsedLvtName(lvt.name, lvt.desc, lvt.index);
             scopedNames.add(suggestedName);

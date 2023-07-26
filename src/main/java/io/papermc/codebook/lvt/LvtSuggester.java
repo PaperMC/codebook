@@ -36,7 +36,6 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
 public final class LvtSuggester {
@@ -44,13 +43,11 @@ public final class LvtSuggester {
     private LvtSuggester() {}
 
     public static String suggestName(
-            final HypoContext context,
-            final LocalVariableNode lvt,
-            final MethodNode node,
-            final Set<String> scopedNames)
-            throws IOException {
+            final HypoContext context, final LocalVariableNode lvt, final Set<String> scopedNames) throws IOException {
         @Nullable VarInsnNode assignmentNode = null;
-        for (final AbstractInsnNode insn : node.instructions) {
+        AbstractInsnNode insn = lvt.start;
+        while (insn.getNext() != null) {
+            insn = insn.getNext();
             final int op = insn.getOpcode();
             if (op < Opcodes.ISTORE || op > Opcodes.ASTORE) {
                 continue;
