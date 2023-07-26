@@ -22,16 +22,17 @@
 
 package io.papermc.codebook.lvt;
 
-import static dev.denwav.hypo.asm.HypoAsmUtil.toJvmType;
-import static org.objectweb.asm.Type.getType;
+import static dev.denwav.hypo.model.data.MethodDescriptor.parseDescriptor;
+import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.ClassData;
-import dev.denwav.hypo.model.data.ClassKind;
+import dev.denwav.hypo.model.data.MethodData;
+import dev.denwav.hypo.model.data.MethodDescriptor;
 import dev.denwav.hypo.model.data.types.JvmType;
 import java.io.IOException;
 import java.util.Set;
-import org.jetbrains.annotations.Nullable;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.LocalVariableNode;
@@ -68,7 +69,7 @@ public final class LvtSuggester {
         }
 
         // we couldn't determine a name from the assignment, so determine a name from the type
-        final JvmType lvtType = toJvmType(getType(lvt.desc));
+        final JvmType lvtType = toJvmType(lvt.desc);
         return determineFinalName(LvtTypeSuggester.suggestNameFromType(context, lvtType), scopedNames);
     }
 
@@ -105,21 +106,56 @@ public final class LvtSuggester {
         }
 
         final MethodInsnNode methodInsnNode = (MethodInsnNode) prev;
-        final String name = methodInsnNode.name;
 
-        final @Nullable ClassData ownerClass = context.getContextProvider().findClass(methodInsnNode.owner);
-        if (ownerClass != null && ownerClass.kind() == ClassKind.RECORD) {
-            return LvtAssignmentSuggester.suggestNameFromRecord(name);
-        } else {
-            return LvtAssignmentSuggester.suggestNameFromAssignment(context, name, methodInsnNode);
+        final @Nullable ClassData owner = context.getContextProvider().findClass(methodInsnNode.owner);
+        if (owner == null) {
+            return null;
         }
+        final @Nullable MethodData method =
+                findMethod(owner, methodInsnNode.name, parseDescriptor(methodInsnNode.desc));
+        if (method == null) {
+            return null;
+        }
+
+        return LvtAssignmentSuggester.suggestNameFromAssignment(context, owner, method, methodInsnNode);
+    }
+
+    private static @Nullable MethodData findMethod(
+            final @Nullable ClassData data, final String name, final MethodDescriptor desc) throws IOException {
+        if (data == null) {
+            return null;
+        }
+
+        {
+            final @Nullable MethodData method = data.method(name, desc);
+            if (method != null) {
+                return method;
+            }
+        }
+
+        final @Nullable ClassData superClass = data.superClass();
+        if (superClass != null) {
+            final @Nullable MethodData method = findMethod(superClass, name, desc);
+            if (method != null) {
+                return method;
+            }
+        }
+
+        for (final ClassData anInterface : data.interfaces()) {
+            final @Nullable MethodData method = findMethod(anInterface, name, desc);
+            if (method != null) {
+                return method;
+            }
+        }
+
+        return null;
     }
 
     private static String shortenName(final String name) {
-        return switch (name) {
-            case "context" -> "ctx";
-            default -> name;
-        };
+        if (name.equals("context")) {
+            return "ctx";
+        }
+        return name;
     }
 
     private static final Set<String> JAVA_KEYWORDS = Set.of(

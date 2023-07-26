@@ -22,78 +22,81 @@
 
 package io.papermc.codebook.lvt;
 
-import static dev.denwav.hypo.asm.HypoAsmUtil.toJvmType;
 import static dev.denwav.hypo.model.HypoModelUtil.wrapFunction;
-import static org.objectweb.asm.Type.getType;
+import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
+import static io.papermc.codebook.lvt.LvtUtil.decapitalizeAlways;
+import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
 import dev.denwav.hypo.core.HypoContext;
+import dev.denwav.hypo.model.data.ClassData;
+import dev.denwav.hypo.model.data.ClassKind;
+import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.MemberData;
-import dev.denwav.hypo.model.data.MethodDescriptor;
+import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
+import dev.denwav.hypo.model.data.types.PrimitiveType;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 
 public final class LvtAssignmentSuggester {
 
+    private static final List<NameSuggester> SUGGESTERS = List.of(
+            LvtAssignmentSuggester::suggestGeneric,
+            LvtAssignmentSuggester::suggestNameFromRecord,
+            LvtAssignmentSuggester::suggestNameFromGetter,
+            LvtAssignmentSuggester::suggestNameFromVerbBoolean,
+            LvtAssignmentSuggester::suggestNameFromSingleWorldVerbBoolean,
+            LvtAssignmentSuggester::suggestNameFromAs,
+            LvtAssignmentSuggester::suggestNameFromNew,
+            LvtAssignmentSuggester::suggestNameFromRead,
+            LvtAssignmentSuggester::suggestNameFromLine,
+            LvtAssignmentSuggester::suggestNameFromStrings);
+
     private LvtAssignmentSuggester() {}
 
     public static @Nullable String suggestNameFromAssignment(
-            final @Nullable HypoContext context, final String methodName, final MethodInsnNode insn)
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn)
             throws IOException {
-        @Nullable String suggested = suggestGeneric(methodName);
-        if (suggested != null) {
-            return suggested;
+
+        for (final NameSuggester suggester : SUGGESTERS) {
+            final @Nullable String suggestion = suggester.suggestName(context, owner, method, insn);
+            if (suggestion != null) {
+                return suggestion;
+            }
         }
 
-        suggested = suggestNameFromGetter(methodName);
-        if (suggested != null) {
-            return suggested;
-        }
-
-        suggested = suggestNameFromVerbBoolean(methodName, insn);
-        if (suggested != null) {
-            return suggested;
-        }
-
-        suggested = suggestNameFromSingleWorldVerbBoolean(context, methodName, insn);
-        if (suggested != null) {
-            return suggested;
-        }
-
-        suggested = suggestNameFromAs(methodName);
-        if (suggested != null) {
-            return suggested;
-        }
-
-        suggested = suggestNameFromNew(methodName, insn);
-        if (suggested != null) {
-            return suggested;
-        }
-
-        suggested = suggestNameFromRead(methodName);
-        if (suggested != null) {
-            return suggested;
-        }
-
-        suggested = suggestNameFromLine(methodName);
-        if (suggested != null) {
-            return suggested;
-        }
-
-        suggested = suggestNameFromStrings(methodName, insn);
-        return suggested;
+        return null;
     }
 
-    public static @Nullable String suggestGeneric(final String methodName) {
-        return switch (methodName) {
+    @FunctionalInterface
+    private interface NameSuggester {
+
+        @Nullable
+        String suggestName(
+                final @Nullable HypoContext context,
+                final ClassData owner,
+                final MethodData method,
+                final MethodInsnNode insn)
+                throws IOException;
+    }
+
+    private static @Nullable String suggestGeneric(
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn) {
+        return switch (method.name()) {
             case "hashCode" -> "hashCode";
             case "size" -> "size";
             case "length" -> "len";
@@ -102,12 +105,35 @@ public final class LvtAssignmentSuggester {
         };
     }
 
-    public static String suggestNameFromRecord(final String methodName) {
-        // method exists in case we want to make additional changes later
-        return methodName;
+    private static @Nullable String suggestNameFromRecord(
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn) {
+        if (owner.kind() != ClassKind.RECORD) {
+            return null;
+        }
+        final @Nullable List<@NotNull FieldData> components = owner.recordComponents();
+        if (components == null) {
+            return null;
+        }
+
+        final String methodName = method.name();
+        for (final FieldData component : components) {
+            if (component.name().equals(methodName)) {
+                return methodName;
+            }
+        }
+
+        return null;
     }
 
-    private static @Nullable String suggestNameFromGetter(final String methodName) {
+    private static @Nullable String suggestNameFromGetter(
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn) {
+        final String methodName = method.name();
         if (!methodName.startsWith("get") || methodName.equals("get")) {
             // If the method isn't `get<Thing>` - or if the method is just `get`
             return null;
@@ -121,23 +147,20 @@ public final class LvtAssignmentSuggester {
             index = 11;
         }
 
-        final String baseName = methodName.substring(index);
-
-        if (Character.isUpperCase(baseName.charAt(0))) {
-            return Character.toLowerCase(baseName.charAt(0)) + baseName.substring(1);
-        } else {
-            // if the name doesn't follow the typical `getName` scheme we can't be confident it's
-            // really a "getter" method, so don't use it for a name
-            return null;
-        }
+        return decapitalize(methodName, index);
     }
 
     private static final List<String> BOOL_METHOD_PREFIXES = List.of("is", "has", "can", "should");
 
-    private static @Nullable String suggestNameFromVerbBoolean(final String methodName, final MethodInsnNode insn) {
-        if (insn.desc == null || !insn.desc.endsWith("Z")) { // only handle methods that return booleans
+    private static @Nullable String suggestNameFromVerbBoolean(
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn) {
+        if (method.returnType() != PrimitiveType.BOOLEAN) {
             return null;
         }
+        final String methodName = method.name();
 
         @Nullable String prefix = null;
         for (final String possiblePrefix : BOOL_METHOD_PREFIXES) {
@@ -158,11 +181,15 @@ public final class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromSingleWorldVerbBoolean(
-            final @Nullable HypoContext context, final String methodName, final MethodInsnNode insn)
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn)
             throws IOException {
-        if (insn.desc == null || !insn.desc.endsWith("Z")) {
+        if (method.returnType() != PrimitiveType.BOOLEAN) {
             return null;
         }
+        final String methodName = method.name();
 
         final String prefix;
         if (methodName.equals("is")) {
@@ -173,8 +200,7 @@ public final class LvtAssignmentSuggester {
             return null;
         }
 
-        final MethodDescriptor descriptor = MethodDescriptor.parseDescriptor(insn.desc);
-        final List<JvmType> paramTypes = descriptor.getParams();
+        final List<JvmType> paramTypes = method.params();
         if (paramTypes.size() != 1) {
             return null;
         }
@@ -188,7 +214,7 @@ public final class LvtAssignmentSuggester {
 
             final boolean isFinal = Optional.ofNullable(context)
                     .map(wrapFunction(ctx -> ctx.getContextProvider().findClass(fieldInsnNode.owner)))
-                    .map(owner -> owner.field(fieldInsnNode.name, toJvmType(getType(fieldInsnNode.desc))))
+                    .map(fieldOwner -> fieldOwner.field(fieldInsnNode.name, toJvmType(fieldInsnNode.desc)))
                     .map(MemberData::isFinal)
                     .orElse(false);
             if (!isFinal) {
@@ -200,8 +226,8 @@ public final class LvtAssignmentSuggester {
             if ("Lnet/minecraft/tags/TagKey;".equals(paramTypeDesc)) { // isTag is better than isTagKey
                 return "isTag";
             }
-            final String typeName = LvtTypeSuggester.suggestNameFromType(context, toJvmType(getType(paramTypeDesc)));
-            return prefix + Character.toUpperCase(typeName.charAt(0)) + typeName.substring(1);
+            final String typeName = LvtTypeSuggester.suggestNameFromType(context, toJvmType(paramTypeDesc));
+            return prefix + decapitalizeAlways(typeName, 0);
         }
     }
 
@@ -225,23 +251,25 @@ public final class LvtAssignmentSuggester {
         return true;
     }
 
-    private static @Nullable String suggestNameFromAs(final String methodName) {
+    private static @Nullable String suggestNameFromAs(
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn) {
+        final String methodName = method.name();
         if (!methodName.startsWith("as") || methodName.equals("as")) {
             return null;
         }
 
-        final String baseName = methodName.substring(2);
-
-        if (Character.isUpperCase(baseName.charAt(0))) {
-            return Character.toLowerCase(baseName.charAt(0)) + baseName.substring(1);
-        } else {
-            // if the name doesn't follow the typical `asName` scheme we can't be confident it's
-            // really a "getter" method, so don't use it for a name
-            return null;
-        }
+        return decapitalize(methodName, 2);
     }
 
-    private static @Nullable String suggestNameFromNew(final String methodName, final MethodInsnNode insn) {
+    private static @Nullable String suggestNameFromNew(
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn) {
+        final String methodName = method.name();
         if (!methodName.startsWith("new") || methodName.equals("new")) {
             return null;
         }
@@ -257,50 +285,48 @@ public final class LvtAssignmentSuggester {
             return result;
         }
 
-        final String baseName = methodName.substring(3);
-
-        if (Character.isUpperCase(baseName.charAt(0))) {
-            return Character.toLowerCase(baseName.charAt(0)) + baseName.substring(1);
-        } else {
-            // if the name doesn't follow the typical `newName` scheme we can't be confident it's
-            // really a "getter" method, so don't use it for a name
-            return null;
-        }
+        return decapitalize(methodName, 3);
     }
 
-    private static @Nullable String suggestNameFromRead(final String methodName) {
+    private static @Nullable String suggestNameFromRead(
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn) {
+        final String methodName = method.name();
         if (!methodName.startsWith("read") || methodName.equals("read")) {
             return null;
         }
 
-        final String baseName = methodName.substring(4);
-
-        if (Character.isUpperCase(baseName.charAt(0))) {
-            return Character.toLowerCase(baseName.charAt(0)) + baseName.substring(1);
-        } else {
-            // if the name doesn't follow the typical `readName` scheme we can't be confident it's
-            // really a "getter" method, so don't use it for a name
-            return null;
-        }
+        return decapitalize(methodName, 4);
     }
 
-    private static @Nullable String suggestNameFromLine(final String methodName) {
+    private static @Nullable String suggestNameFromLine(
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn) {
+        final String methodName = method.name();
         if (methodName.equals("readLine")) {
             return "line";
         }
         return null;
     }
 
-    private static final Type stringType = getType("Ljava/lang/String;");
+    private static @Nullable String suggestNameFromStrings(
+            final @Nullable HypoContext context,
+            final ClassData owner,
+            final MethodData method,
+            final MethodInsnNode insn) {
+        final String methodName = method.name();
 
-    private static @Nullable String suggestNameFromStrings(final String methodName, final MethodInsnNode insn) {
         if (methodName.startsWith("split")) {
-            if (insn.owner.equals("java/lang/String") || insn.owner.equals("com/google/common/base/Splitter")) {
+            if (owner.name().equals("java/lang/String") || owner.name().equals("com/google/common/base/Splitter")) {
                 return "parts";
             }
         }
 
-        if (methodName.equals("repeat") && Type.getReturnType(insn.desc).equals(stringType)) {
+        if (methodName.equals("repeat") && method.returnType().asInternalName().equals("Ljava/lang/String;")) {
             return "repeated";
         }
         if (methodName.equals("indexOf") || methodName.equals("lastIndexOf")) {
