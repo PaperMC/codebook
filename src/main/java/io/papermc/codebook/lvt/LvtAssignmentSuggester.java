@@ -41,7 +41,7 @@ public final class LvtAssignmentSuggester {
             return suggested;
         }
 
-        suggested = suggestNameFromIsOrHas(methodName, insn);
+        suggested = suggestNameFromVerbBoolean(methodName, insn);
         if (suggested != null) {
             return suggested;
         }
@@ -110,7 +110,7 @@ public final class LvtAssignmentSuggester {
         }
     }
 
-    private static @Nullable String suggestNameFromIsOrHas(final String methodName, final MethodInsnNode insn) {
+    private static @Nullable String suggestNameFromVerbBoolean(final String methodName, final MethodInsnNode insn) {
         if (insn.desc == null || !insn.desc.endsWith("Z")) { // only handle methods that return booleans
             return null;
         }
@@ -122,6 +122,8 @@ public final class LvtAssignmentSuggester {
             prefix = "has";
         } else if (!"can".equals(methodName) && methodName.startsWith("can")) {
             prefix = "can";
+        } else if (!"should".equals(methodName) && methodName.startsWith("should")) {
+            prefix = "should";
         } else {
             return null;
         }
