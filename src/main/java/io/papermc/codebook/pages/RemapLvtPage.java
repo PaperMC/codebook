@@ -33,12 +33,17 @@ import dev.denwav.hypo.model.ClassProviderRoot;
 import dev.denwav.hypo.model.HypoModelUtil;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.MethodData;
+import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.exceptions.UnexpectedException;
+import io.papermc.codebook.lvt.LvtAssignmentSuggester;
 import io.papermc.codebook.lvt.LvtNamer;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.cadixdev.lorenz.MappingSet;
 
 public final class RemapLvtPage extends CodeBookPage {
@@ -47,17 +52,20 @@ public final class RemapLvtPage extends CodeBookPage {
     private final List<Path> classpath;
     private final MappingSet mappings;
     private final Path tempDir;
+    private final CodeBookContext context;
 
     @Inject
     public RemapLvtPage(
             @InputJar final Path inputJar,
             @ClasspathJars final List<Path> classpath,
             @Mappings final MappingSet mappings,
-            @TempDir final Path tempDir) {
+            @TempDir final Path tempDir,
+            @Context final CodeBookContext context) {
         this.inputJar = inputJar;
         this.classpath = classpath;
         this.mappings = mappings.reverse();
         this.tempDir = tempDir;
+        this.context = context;
     }
 
     @Override
@@ -77,6 +85,13 @@ public final class RemapLvtPage extends CodeBookPage {
 
             final Path result = this.remapLvtWithContext(context);
             this.bind(InputJar.KEY).to(result);
+            if (this.context.logMissingLvtSuggestions()) {
+                LvtAssignmentSuggester.MISSED_NAME_SUGGESTIONS.entrySet().stream()
+                        .sorted(Comparator.<Map.Entry<String, AtomicInteger>, Integer>comparing(
+                                        e -> e.getValue().get())
+                                .reversed())
+                        .forEach(s -> System.out.println("missed: " + s.getKey() + " -- " + s.getValue() + " times"));
+            }
         } catch (final Exception e) {
             throw new UnexpectedException("Failed to fix jar", e);
         }

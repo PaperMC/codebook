@@ -85,6 +85,12 @@ public final class Main implements Callable<Integer> {
                 paramLabel = "<tiny-remapper-uri>",
                 description = "A download URL for the executable tiny-remapper jar to use for the remapping process.")
         private @Nullable URI remapperUri;
+
+        @CommandLine.Option(
+                names = "--log-missing-lvt-suggestions",
+                paramLabel = "<log-missing-lvt-suggestions>",
+                description = "Include a report of missing lvt name suggestions in the remapping log")
+        private boolean logMissingLvtSuggestions;
     }
 
     @CommandLine.ArgGroup(
@@ -343,6 +349,7 @@ public final class Main implements Callable<Integer> {
                 .outputJar(this.outputJar)
                 .overwrite(this.forceWrite)
                 .input(input)
+                .logMissingLvtSuggestions(this.remapper.logMissingLvtSuggestions)
                 .build();
     }
 

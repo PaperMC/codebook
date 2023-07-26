@@ -40,8 +40,11 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -65,6 +68,8 @@ public final class LvtAssignmentSuggester {
             LvtAssignmentSuggester::suggestNameFromLine,
             LvtAssignmentSuggester::suggestNameFromStrings);
 
+    public static final Map<String, AtomicInteger> MISSED_NAME_SUGGESTIONS = new ConcurrentHashMap<>();
+
     private LvtAssignmentSuggester() {}
 
     public static @Nullable String suggestNameFromAssignment(
@@ -80,6 +85,9 @@ public final class LvtAssignmentSuggester {
                 return suggestion;
             }
         }
+        MISSED_NAME_SUGGESTIONS
+                .computeIfAbsent(method.name() + "," + insn.owner + "," + insn.desc, (k) -> new AtomicInteger(0))
+                .incrementAndGet();
 
         return null;
     }
