@@ -89,7 +89,8 @@ public final class Main implements Callable<Integer> {
         @CommandLine.Option(
                 names = "--log-missing-lvt-suggestions",
                 paramLabel = "<log-missing-lvt-suggestions>",
-                description = "Include a report of missing lvt name suggestions in the remapping log")
+                description = "Include a report of missing lvt name suggestions in the remapping log",
+                hidden = true)
         private boolean logMissingLvtSuggestions;
     }
 
