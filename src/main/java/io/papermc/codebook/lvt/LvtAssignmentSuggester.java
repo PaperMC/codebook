@@ -120,6 +120,8 @@ public final class LvtAssignmentSuggester {
             prefix = "is";
         } else if (!"has".equals(methodName) && methodName.startsWith("has")) {
             prefix = "has";
+        } else if (!"can".equals(methodName) && methodName.startsWith("can")) {
+            prefix = "can";
         } else {
             return null;
         }
