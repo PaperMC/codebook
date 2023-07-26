@@ -41,11 +41,9 @@ public final class LvtAssignmentSuggester {
             return suggested;
         }
 
-        if (insn.desc != null && insn.desc.endsWith(")Z")) { // only handle methods that return booleans
-            suggested = suggestNameFromIs(methodName);
-            if (suggested != null) {
-                return suggested;
-            }
+        suggested = suggestNameFromIs(methodName, insn);
+        if (suggested != null) {
+            return suggested;
         }
 
         suggested = suggestNameFromAs(methodName);
@@ -112,7 +110,11 @@ public final class LvtAssignmentSuggester {
         }
     }
 
-    private static @Nullable String suggestNameFromIs(final String methodName) {
+    private static @Nullable String suggestNameFromIs(final String methodName, final MethodInsnNode insn) {
+        if (insn.desc == null || !insn.desc.endsWith(")Z")) { // only handle methods that return booleans
+            return null;
+        }
+
         if (!methodName.startsWith("is") || methodName.equals("is")) {
             return null;
         }
