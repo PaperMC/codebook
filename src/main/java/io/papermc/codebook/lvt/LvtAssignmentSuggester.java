@@ -41,6 +41,13 @@ public final class LvtAssignmentSuggester {
             return suggested;
         }
 
+        if (insn.desc != null && insn.desc.endsWith(")Z")) { // only handle methods that return booleans
+            suggested = suggestNameFromIs(methodName);
+            if (suggested != null) {
+                return suggested;
+            }
+        }
+
         suggested = suggestNameFromAs(methodName);
         if (suggested != null) {
             return suggested;
@@ -101,6 +108,18 @@ public final class LvtAssignmentSuggester {
         } else {
             // if the name doesn't follow the typical `getName` scheme we can't be confident it's
             // really a "getter" method, so don't use it for a name
+            return null;
+        }
+    }
+
+    private static @Nullable String suggestNameFromIs(final String methodName) {
+        if (!methodName.startsWith("is") || methodName.equals("is")) {
+            return null;
+        }
+
+        if (Character.isUpperCase(methodName.charAt(2))) {
+            return methodName;
+        } else {
             return null;
         }
     }

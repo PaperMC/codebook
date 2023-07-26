@@ -45,3 +45,6 @@ getOrCreate,io/paper/Paper,()Ljava/lang/String;,
 gettingBetter,io/paper/Paper,()Ljava/lang/String;,
 as,io/paper/paper,()Ljava/lang/String;,
 ass,io/paper/paper,()Ljava/lang/String;,
+is,io/paper/Paper,()Z,
+isValid,io/paper/Paper,()Z,isValid
+isValid,io/paper/Paper,()Ljava/lang/String;,
