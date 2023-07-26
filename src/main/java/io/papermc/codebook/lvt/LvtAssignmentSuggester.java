@@ -52,7 +52,7 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 
-public final class LvtAssignmentSuggester {
+public class LvtAssignmentSuggester {
 
     private static final List<NameSuggester> SUGGESTERS = List.of(
             LvtAssignmentSuggester::suggestGeneric,
@@ -68,11 +68,13 @@ public final class LvtAssignmentSuggester {
             LvtAssignmentSuggester::suggestNameFromLine,
             LvtAssignmentSuggester::suggestNameFromStrings);
 
-    public static final Map<String, AtomicInteger> MISSED_NAME_SUGGESTIONS = new ConcurrentHashMap<>();
+    public final Map<String, AtomicInteger> missedNameSuggestions;
 
-    private LvtAssignmentSuggester() {}
+    public LvtAssignmentSuggester(final Map<String, AtomicInteger> missedNameSuggestions) {
+        this.missedNameSuggestions = missedNameSuggestions;
+    }
 
-    public static @Nullable String suggestNameFromAssignment(
+    public @Nullable String suggestNameFromAssignment(
             final @Nullable HypoContext context,
             final AsmClassData owner,
             final AsmMethodData method,
@@ -85,7 +87,7 @@ public final class LvtAssignmentSuggester {
                 return suggestion;
             }
         }
-        MISSED_NAME_SUGGESTIONS
+        this.missedNameSuggestions
                 .computeIfAbsent(method.name() + "," + insn.owner + "," + insn.desc, (k) -> new AtomicInteger(0))
                 .incrementAndGet();
 

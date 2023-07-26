@@ -26,6 +26,7 @@ import static dev.denwav.hypo.mappings.LorenzUtil.getClassMapping;
 import static dev.denwav.hypo.mappings.LorenzUtil.getMethodMapping;
 import static dev.denwav.hypo.mappings.LorenzUtil.getParameterMapping;
 
+import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmConstructorData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
@@ -41,7 +42,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.model.ClassMapping;
 import org.cadixdev.lorenz.model.MethodMapping;
@@ -50,14 +54,26 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 
-public final class LvtNamer {
+public class LvtNamer {
 
     public static final HypoKey<Set<String>> SCOPED_NAMES = HypoKey.create("Scoped Names");
 
-    private LvtNamer() {}
+    private final MappingSet mappings;
+    private final LvtSuggester lvtSuggester;
+    public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
 
-    public static void fillNames(
-            final HypoContext context, final MethodData method, final @Nullable MappingSet mappings)
+    public LvtNamer(final MappingSet mappings) {
+        this.mappings = mappings;
+        this.lvtSuggester = new LvtSuggester(this.missedNameSuggestions);
+    }
+
+    public void processClass(final HypoContext context, final AsmClassData classData) throws IOException {
+        for (final MethodData method : classData.methods()) {
+            this.fillNames(context, method, this.mappings);
+        }
+    }
+
+    public void fillNames(final HypoContext context, final MethodData method, final @Nullable MappingSet mappings)
             throws IOException {
         final @Nullable Set<String> names = method.get(SCOPED_NAMES);
         if (names != null) {
@@ -116,7 +132,7 @@ public final class LvtNamer {
         // This method (`fillNames`) will ensure the outer method has names defined in its scope first.
         // If the scope is already computed this is a no-op
         if (outerMethod != null) {
-            fillNames(context, outerMethod, mappings);
+            this.fillNames(context, outerMethod, mappings);
         }
 
         // we only need the mappings for determining if we should skip a local variable because we have a param mapping
@@ -251,7 +267,7 @@ public final class LvtNamer {
                 }
             }
 
-            final var suggestedName = LvtSuggester.suggestName(context, node, lvt, scopedNames);
+            final var suggestedName = this.lvtSuggester.suggestName(context, node, lvt, scopedNames);
             lvt.name = suggestedName;
             usedNames[usedNameIndex++] = new UsedLvtName(lvt.name, lvt.desc, lvt.index);
             scopedNames.add(suggestedName);

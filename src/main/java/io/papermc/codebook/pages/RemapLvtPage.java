@@ -32,10 +32,8 @@ import dev.denwav.hypo.hydrate.HydrationManager;
 import dev.denwav.hypo.model.ClassProviderRoot;
 import dev.denwav.hypo.model.HypoModelUtil;
 import dev.denwav.hypo.model.data.ClassData;
-import dev.denwav.hypo.model.data.MethodData;
 import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.exceptions.UnexpectedException;
-import io.papermc.codebook.lvt.LvtAssignmentSuggester;
 import io.papermc.codebook.lvt.LvtNamer;
 import jakarta.inject.Inject;
 import java.io.IOException;
@@ -53,6 +51,7 @@ public final class RemapLvtPage extends CodeBookPage {
     private final MappingSet mappings;
     private final Path tempDir;
     private final CodeBookContext context;
+    private final LvtNamer lvtNamer;
 
     @Inject
     public RemapLvtPage(
@@ -66,6 +65,7 @@ public final class RemapLvtPage extends CodeBookPage {
         this.mappings = mappings.reverse();
         this.tempDir = tempDir;
         this.context = context;
+        this.lvtNamer = new LvtNamer(this.mappings);
     }
 
     @Override
@@ -86,7 +86,7 @@ public final class RemapLvtPage extends CodeBookPage {
             final Path result = this.remapLvtWithContext(context);
             this.bind(InputJar.KEY).to(result);
             if (this.context.logMissingLvtSuggestions()) {
-                LvtAssignmentSuggester.MISSED_NAME_SUGGESTIONS.entrySet().stream()
+                this.lvtNamer.missedNameSuggestions.entrySet().stream()
                         .sorted(Comparator.<Map.Entry<String, AtomicInteger>, Integer>comparing(
                                         e -> e.getValue().get())
                                 .reversed())
@@ -109,7 +109,7 @@ public final class RemapLvtPage extends CodeBookPage {
 
     private Path remapLvtWithContext(final HypoContext context) throws IOException {
         for (final ClassData classData : context.getProvider().allClasses()) {
-            this.processClass(context, (AsmClassData) classData);
+            this.lvtNamer.processClass(context, (AsmClassData) classData);
         }
 
         final Path lvtRemapped = this.tempDir.resolve("lvtRemapped.jar");
@@ -117,11 +117,5 @@ public final class RemapLvtPage extends CodeBookPage {
 
         this.bind(InputJar.KEY).to(lvtRemapped);
         return lvtRemapped;
-    }
-
-    private void processClass(final HypoContext context, final AsmClassData classData) throws IOException {
-        for (final MethodData method : classData.methods()) {
-            LvtNamer.fillNames(context, method, this.mappings);
-        }
     }
 }

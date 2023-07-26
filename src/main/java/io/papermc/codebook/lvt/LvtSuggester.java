@@ -33,7 +33,9 @@ import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.MethodDescriptor;
 import dev.denwav.hypo.model.data.types.JvmType;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -42,11 +44,15 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
-public final class LvtSuggester {
+public class LvtSuggester {
 
-    private LvtSuggester() {}
+    private final LvtAssignmentSuggester assignmentSuggester;
 
-    public static String suggestName(
+    public LvtSuggester(final Map<String, AtomicInteger> missedNameSuggestions) {
+        this.assignmentSuggester = new LvtAssignmentSuggester(missedNameSuggestions);
+    }
+
+    public String suggestName(
             final HypoContext context,
             final MethodNode node,
             final LocalVariableNode lvt,
@@ -85,7 +91,7 @@ public final class LvtSuggester {
         }
 
         if (assignmentNode != null) {
-            final @Nullable String suggestedName = suggestNameFromFirstAssignment(context, assignmentNode);
+            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(context, assignmentNode);
             if (suggestedName != null) {
                 return determineFinalName(suggestedName, scopedNames);
             }
@@ -120,7 +126,7 @@ public final class LvtSuggester {
         }
     }
 
-    private static @Nullable String suggestNameFromFirstAssignment(final HypoContext context, final VarInsnNode varInsn)
+    private @Nullable String suggestNameFromFirstAssignment(final HypoContext context, final VarInsnNode varInsn)
             throws IOException {
         final AbstractInsnNode prev = varInsn.getPrevious();
         final int op = prev.getOpcode();
@@ -140,7 +146,7 @@ public final class LvtSuggester {
             return null;
         }
 
-        return LvtAssignmentSuggester.suggestNameFromAssignment(
+        return this.assignmentSuggester.suggestNameFromAssignment(
                 context, (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
     }
 
