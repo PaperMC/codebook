@@ -139,7 +139,7 @@ public final class LvtAssignmentSuggester {
             return null;
         }
 
-        String prefix = null;
+        @Nullable String prefix = null;
         for (final String possiblePrefix : BOOL_METHOD_PREFIXES) {
             if (!possiblePrefix.equals(methodName) && methodName.startsWith(possiblePrefix)) {
                 prefix = possiblePrefix;
