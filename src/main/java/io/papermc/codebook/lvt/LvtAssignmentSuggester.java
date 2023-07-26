@@ -112,6 +112,7 @@ public final class LvtAssignmentSuggester {
     }
 
     private static final List<String> BOOL_METHOD_PREFIXES = List.of("is", "has", "can", "should");
+
     private static @Nullable String suggestNameFromVerbBoolean(final String methodName, final MethodInsnNode insn) {
         if (insn.desc == null || !insn.desc.endsWith("Z")) { // only handle methods that return booleans
             return null;
