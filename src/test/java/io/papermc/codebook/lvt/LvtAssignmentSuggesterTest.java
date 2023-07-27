@@ -56,7 +56,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -124,6 +126,10 @@ class LvtAssignmentSuggesterTest {
         when(method.params()).thenCallRealMethod();
         when(method.param(anyInt())).thenCallRealMethod();
         when(method.returnType()).thenCallRealMethod();
+
+        final MethodNode node = new MethodNode(Opcodes.ASM9, methodName, methodDescriptor, null, null);
+        node.instructions = new InsnList();
+        when(method.getNode()).thenReturn(node);
 
         if (methodOwner.equals(HypoModelUtil.normalizedClassName(RANDOM_SOURCE_TYPE.asInternalName()))) {
             when(owner.doesExtendOrImplement(this.randomSourceClass)).thenReturn(true);
