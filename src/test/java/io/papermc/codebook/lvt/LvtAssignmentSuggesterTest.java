@@ -37,6 +37,7 @@ import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.MethodDescriptor;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,6 +49,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.quality.Strictness;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 
 @ExtendWith(MockitoExtension.class)
 class LvtAssignmentSuggesterTest {
@@ -81,6 +83,8 @@ class LvtAssignmentSuggesterTest {
 
         final AsmClassData owner = mock(LENIENT);
         final AsmMethodData method = mock(LENIENT);
+        final MethodNode enclosingMethodNode = mock(LENIENT);
+        enclosingMethodNode.localVariables = List.of();
 
         when(owner.kind()).thenReturn(ClassKind.CLASS);
         when(owner.name()).thenReturn(methodOwner);
@@ -102,7 +106,8 @@ class LvtAssignmentSuggesterTest {
 
         final MethodInsnNode insn =
                 new MethodInsnNode(Opcodes.INVOKEVIRTUAL, methodOwner, methodName, methodDescriptor);
-        final @Nullable String result = this.suggester.suggestNameFromAssignment(owner, method, insn);
+        final @Nullable String result =
+                this.suggester.suggestNameFromAssignment(enclosingMethodNode, owner, method, insn);
 
         assertEquals(expectedName, result);
     }

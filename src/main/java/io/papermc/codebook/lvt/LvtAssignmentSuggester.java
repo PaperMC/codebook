@@ -42,14 +42,19 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.VarInsnNode;
 
 public class LvtAssignmentSuggester {
 
@@ -60,6 +65,8 @@ public class LvtAssignmentSuggester {
             LvtAssignmentSuggester::suggestNameFromRecord,
             this::suggestNameForRandomSource,
             this::suggestNameForMcMthRandom,
+            LvtAssignmentSuggester::suggestNameForSectionPos,
+            LvtAssignmentSuggester::suggestNameForQuartPos,
             LvtAssignmentSuggester::suggestNameFromGetter,
             LvtAssignmentSuggester::suggestNameFromVerbBoolean,
             this::suggestNameFromSingleWorldVerbBoolean,
@@ -88,10 +95,14 @@ public class LvtAssignmentSuggester {
     }
 
     public @Nullable String suggestNameFromAssignment(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) throws IOException {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn)
+            throws IOException {
 
         for (final NameSuggester suggester : this.suggesters) {
-            final @Nullable String suggestion = suggester.suggestName(owner, method, insn);
+            final @Nullable String suggestion = suggester.suggestName(enclosingMethodNode, owner, method, insn);
             if (suggestion != null) {
                 return suggestion;
             }
@@ -107,12 +118,19 @@ public class LvtAssignmentSuggester {
     private interface NameSuggester {
 
         @Nullable
-        String suggestName(final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn)
+        String suggestName(
+                final MethodNode enclosingMethodNode,
+                final AsmClassData owner,
+                final AsmMethodData method,
+                final MethodInsnNode insn)
                 throws IOException;
     }
 
     private static @Nullable String suggestGeneric(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         return switch (method.name()) {
             case "hashCode" -> "hashCode";
             case "size" -> "size";
@@ -123,7 +141,10 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromRecord(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         if (owner.kind() != ClassKind.RECORD) {
             return null;
         }
@@ -143,7 +164,10 @@ public class LvtAssignmentSuggester {
     }
 
     private @Nullable String suggestNameForRandomSource(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         final String methodName = method.name();
         ClassData ownerClass = owner;
         if (owner.doesExtendOrImplement(this.randomSourceClass)) {
@@ -162,7 +186,10 @@ public class LvtAssignmentSuggester {
     }
 
     private @Nullable String suggestNameForMcMthRandom(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!owner.name().equals("net/minecraft/util/Mth")) {
             return null;
@@ -230,8 +257,143 @@ public class LvtAssignmentSuggester {
         return nextWord.toString();
     }
 
+    enum PosType {
+        BLOCK("block", "blockpos"),
+        QUART("quart", "quartpos", "biome", "biomepos"),
+        SECTION("section", "sectionpos");
+
+        final Set<String> possibleNames;
+        final String localName;
+
+        PosType(final String... possibleNames) {
+            this.possibleNames = Set.of(possibleNames);
+            this.localName = this.name().toLowerCase(Locale.ENGLISH) + "Pos";
+        }
+    }
+
+    private record MethodPair(PosType returnType, PosType paramType) {}
+
+    public static @Nullable String suggestNameForSectionPos(
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
+        if (!"net/minecraft/core/SectionPos".equals(owner.name())) {
+            return null;
+        }
+
+        // this matches 2 methods for each x, y, z. One static that takes the packed position, the output names are
+        // appropriate for both method types
+        final @Nullable String possibleSimpleName =
+                switch (method.name()) {
+                    case "x" -> "sectionX";
+                    case "y" -> "sectionY";
+                    case "z" -> "sectionZ";
+                    case "blockToSection" -> "packedSectionPos";
+                    default -> null;
+                };
+        if (possibleSimpleName != null) {
+            return possibleSimpleName;
+        }
+
+        final @Nullable MethodPair methodPair =
+                switch (method.name()) {
+                    case "blockToSectionCoord" -> new MethodPair(PosType.SECTION, PosType.BLOCK);
+                    case "sectionToBlockCoord" -> new MethodPair(PosType.BLOCK, PosType.SECTION);
+                    default -> null;
+                };
+
+        return getCoordLocalNameFromMethodPair(enclosingMethodNode, insn, methodPair);
+    }
+
+    public static @Nullable String suggestNameForQuartPos(
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
+        // all methods in QuartPos have a single int param and return int
+        if (!"net/minecraft/core/QuartPos".equals(owner.name())
+                || method.params().size() != 1
+                || method.param(0) != PrimitiveType.INT
+                || method.returnType() != PrimitiveType.INT) {
+            return null;
+        }
+
+        final @Nullable MethodPair methodPair =
+                switch (method.name()) {
+                    case "fromBlock" -> new MethodPair(PosType.QUART, PosType.BLOCK);
+                    case "toBlock" -> new MethodPair(PosType.BLOCK, PosType.QUART);
+                    case "fromSection" -> new MethodPair(PosType.QUART, PosType.SECTION);
+                    case "toSection" -> new MethodPair(PosType.SECTION, PosType.QUART);
+                    default -> null;
+                };
+        if (methodPair == null) {
+            return null;
+        }
+
+        return getCoordLocalNameFromMethodPair(enclosingMethodNode, insn, methodPair);
+    }
+
+    private static @Nullable String getCoordLocalNameFromMethodPair(
+            final MethodNode enclosingMethodNode, final MethodInsnNode insn, final @Nullable MethodPair methodPair) {
+        if (methodPair == null) {
+            return null;
+        }
+
+        final AbstractInsnNode prev = insn.getPrevious();
+
+        if (prev instanceof final VarInsnNode varNode) {
+            final LocalVariableNode paramNode = findLocalVar(enclosingMethodNode, varNode.var);
+            // get last character to account for "blockX", "biomeZ", etc.
+            final int possibleCoordIdx = getPossibleCoordIdx(paramNode.name);
+            if (possibleCoordIdx > -1
+                    && (paramNode.name.length() == 1
+                            || methodPair.paramType.possibleNames.contains(paramNode
+                                    .name
+                                    .substring(0, possibleCoordIdx)
+                                    .toLowerCase(Locale.ENGLISH)))) {
+                return methodPair.returnType.localName + Character.toUpperCase(paramNode.name.charAt(possibleCoordIdx));
+            }
+        } else if (prev instanceof final MethodInsnNode methodNode) {
+            final String name = methodNode.name.startsWith("get") ? methodNode.name.substring(3) : methodNode.name;
+            final int possibleCoordIdx = getPossibleCoordIdx(name);
+            if (possibleCoordIdx > -1) {
+                return methodPair.returnType.localName + Character.toUpperCase(name.charAt(possibleCoordIdx));
+            }
+        }
+
+        return methodPair.returnType.localName;
+    }
+
+    private static int getPossibleCoordIdx(final String name) {
+        for (int i = name.length() - 1; i >= 0; i--) {
+            final char ch = Character.toUpperCase(name.charAt(i));
+            if (!Character.isAlphabetic(ch)) {
+                continue;
+            }
+            if (ch == 'X' || ch == 'Y' || ch == 'Z') {
+                return i;
+            }
+            return -1;
+        }
+        return -1; // don't think this is possible
+    }
+
+    private static LocalVariableNode findLocalVar(final MethodNode enclosingMethod, final int varIdx) {
+        for (final LocalVariableNode lvn : Objects.requireNonNull(enclosingMethod.localVariables)) {
+            if (lvn.index == varIdx) {
+                return lvn;
+            }
+        }
+        throw new IllegalStateException(
+                "Cannot find idx " + varIdx + " on " + enclosingMethod.name + " " + enclosingMethod.desc);
+    }
+
     private static @Nullable String suggestNameFromGetter(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("get") || methodName.equals("get")) {
             // If the method isn't `get<Thing>` - or if the method is just `get`
@@ -252,7 +414,10 @@ public class LvtAssignmentSuggester {
     private static final List<String> BOOL_METHOD_PREFIXES = List.of("is", "has", "can", "should");
 
     private static @Nullable String suggestNameFromVerbBoolean(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         if (method.returnType() != PrimitiveType.BOOLEAN) {
             return null;
         }
@@ -277,7 +442,11 @@ public class LvtAssignmentSuggester {
     }
 
     private @Nullable String suggestNameFromSingleWorldVerbBoolean(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) throws IOException {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn)
+            throws IOException {
         if (method.returnType() != PrimitiveType.BOOLEAN) {
             return null;
         }
@@ -344,7 +513,10 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromAs(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("as") || methodName.equals("as")) {
             return null;
@@ -354,7 +526,10 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromNew(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("new") || methodName.equals("new")) {
             return null;
@@ -375,7 +550,10 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromRead(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         final String methodName = method.name();
         if (!methodName.startsWith("read") || methodName.equals("read")) {
             return null;
@@ -385,7 +563,10 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromLine(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         final String methodName = method.name();
         if (methodName.equals("readLine")) {
             return "line";
@@ -394,7 +575,10 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromStrings(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         final String methodName = method.name();
 
         if (methodName.startsWith("split")) {
@@ -429,7 +613,10 @@ public class LvtAssignmentSuggester {
     }
 
     private static @Nullable String suggestNameFromMath(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
         final String methodName = method.name();
 
         if (owner.name().equals("java/lang/Math")) {

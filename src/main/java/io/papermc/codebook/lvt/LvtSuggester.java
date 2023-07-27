@@ -90,7 +90,7 @@ public final class LvtSuggester {
         }
 
         if (assignmentNode != null) {
-            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(assignmentNode);
+            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(node, assignmentNode);
             if (suggestedName != null) {
                 return determineFinalName(suggestedName, scopedNames);
             }
@@ -125,7 +125,8 @@ public final class LvtSuggester {
         }
     }
 
-    private @Nullable String suggestNameFromFirstAssignment(final VarInsnNode varInsn) throws IOException {
+    private @Nullable String suggestNameFromFirstAssignment(
+            final MethodNode enclosingMethodNode, final VarInsnNode varInsn) throws IOException {
         final AbstractInsnNode prev = varInsn.getPrevious();
         final int op = prev.getOpcode();
         if (op != Opcodes.INVOKESTATIC && op != Opcodes.INVOKEVIRTUAL && op != Opcodes.INVOKEINTERFACE) {
@@ -145,7 +146,7 @@ public final class LvtSuggester {
         }
 
         return this.assignmentSuggester.suggestNameFromAssignment(
-                (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
+                enclosingMethodNode, (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
     }
 
     private static @Nullable MethodData findMethod(
