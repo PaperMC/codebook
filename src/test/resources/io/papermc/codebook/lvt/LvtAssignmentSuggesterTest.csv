@@ -68,10 +68,10 @@ has,io/paper/Paper,()Z,
 # random methods
 nextInt,net/minecraft/util/RandomSource,()I,randomInt
 nextInteger,net/minecraft/util/RandomSource,()I,randomInteger
-nextInt,net/minecraft/util/RandomSource,()L,
+nextInt,net/minecraft/util/RandomSource,()J,
 nextInt,io/paper/Paper,()I,
 nextIntBetween,net/minecraft/util/RandomSource,(II)I,randomInt
-nextIntBetween,net/minecraft/util/RandomSource,(II)L,
+nextIntBetween,net/minecraft/util/RandomSource,(II)J,
 nextBoolean,net/minecraft/util/RandomSource,()Z,randomBoolean
 nextInt,net/minecraft/util/Mth,(Lnet/minecraft/util/RandomSource;)I,randomInt
 nextInt,net/minecraft/util/Mth,(I)I,

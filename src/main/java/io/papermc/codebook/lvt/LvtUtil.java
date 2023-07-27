@@ -35,16 +35,12 @@ public final class LvtUtil {
         return HypoAsmUtil.toJvmType(Type.getType(desc));
     }
 
-    public static String decapitalizeAlways(final String name, final int index) {
-        return decapitalize(name, index, true);
+    public static String capitalize(final String name, final int index) {
+        return Character.toUpperCase(name.charAt(index)) + name.substring(index + 1);
     }
 
     public static @Nullable String decapitalize(final String name, final int index) {
-        return decapitalize(name, index, false);
-    }
-
-    private static @Nullable String decapitalize(final String name, final int index, final boolean always) {
-        if (!always && !Character.isUpperCase(name.charAt(index))) {
+        if (!Character.isUpperCase(name.charAt(index))) {
             // If the char isn't uppercase, that means it isn't following the typical `lowerCamelCase`
             // Java method naming scheme how we expect, so we can't be sure it means what we think it
             // means in this instance

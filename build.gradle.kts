@@ -29,8 +29,12 @@ dependencies {
     annotationProcessor(libs.recordBuilder.processor)
     compileOnly(libs.recordBuilder.core)
 
-    testImplementation(libs.junit.core)
+    testImplementation(libs.junit.api)
     testImplementation(libs.junit.params)
+    testRuntimeOnly(libs.junit.engine)
+
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.junit)
 }
 
 publishing {
