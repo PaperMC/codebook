@@ -67,6 +67,7 @@ public class LvtAssignmentSuggester {
             LvtAssignmentSuggester::suggestNameFromNew,
             LvtAssignmentSuggester::suggestNameFromRead,
             LvtAssignmentSuggester::suggestNameFromLine,
+            LvtAssignmentSuggester::suggestNameFromMath,
             LvtAssignmentSuggester::suggestNameFromStrings);
 
     private final HypoContext context;
@@ -422,6 +423,57 @@ public class LvtAssignmentSuggester {
         }
         if (methodName.equals("formatted")) {
             return "formatted";
+        }
+
+        return null;
+    }
+
+    private static @Nullable String suggestNameFromMath(
+            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
+        final String methodName = method.name();
+
+        if (owner.name().equals("java/lang/Math")) {
+            return switch (methodName) {
+                case "max" -> "max";
+                case "min" -> "min";
+                case "sqrt" -> "squareRoot";
+                case "sin" -> "sin";
+                case "cos" -> "cos";
+                case "tan" -> "tan";
+                case "asin" -> "asin";
+                case "acos" -> "acos";
+                case "atan" -> "atan";
+                case "atan2" -> "atan2";
+                case "sinh" -> "sinh";
+                case "cosh" -> "cosh";
+                case "tanh" -> "tanh";
+                case "ceil" -> "ceil";
+                case "floor" -> "floor";
+                case "round" -> "rounded";
+                case "abs" -> "abs";
+                default -> null;
+            };
+        }
+
+        if (owner.name().equals("net/minecraft/util/Mth")) {
+            return switch (methodName) {
+                case "abs" -> "abs";
+                case "absMax" -> "max";
+                case "sin" -> "sin";
+                case "cos" -> "cos";
+                case "sqrt" -> "squareRoot";
+                case "invSqrt", "fastInvSqrt" -> "inverseSquareRoot";
+                case "ceil" -> "ceil";
+                case "floor" -> "floor";
+                case "roundToward" -> "rounded";
+                case "square" -> "squared";
+                case "hsvToRgb" -> "rgb";
+                case "binarySearch" -> "index";
+                case "frac" -> "fraction";
+                case "color" -> "color";
+                case "equal" -> "isEqual";
+                default -> null;
+            };
         }
 
         return null;
