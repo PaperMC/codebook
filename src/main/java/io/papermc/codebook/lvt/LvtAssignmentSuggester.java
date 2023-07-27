@@ -38,6 +38,7 @@ import dev.denwav.hypo.model.data.types.JvmType;
 import dev.denwav.hypo.model.data.types.PrimitiveType;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -51,6 +52,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -343,7 +345,7 @@ public class LvtAssignmentSuggester {
         final AbstractInsnNode prev = insn.getPrevious();
 
         if (prev instanceof final VarInsnNode varNode) {
-            final LocalVariableNode paramNode = findLocalVar(enclosingMethodNode, varNode.var);
+            final LocalVariableNode paramNode = findLocalVar(enclosingMethodNode, insn, varNode.var);
             // get last character to account for "blockX", "biomeZ", etc.
             final int possibleCoordIdx = getPossibleCoordIdx(paramNode.name);
             if (possibleCoordIdx > -1
@@ -379,14 +381,37 @@ public class LvtAssignmentSuggester {
         return -1; // don't think this is possible
     }
 
-    private static LocalVariableNode findLocalVar(final MethodNode enclosingMethod, final int varIdx) {
+    private static LocalVariableNode findLocalVar(
+            final MethodNode enclosingMethod, final AbstractInsnNode insn, final int varIdx) {
+        final List<LocalVariableNode> matching = new ArrayList<>();
         for (final LocalVariableNode lvn : Objects.requireNonNull(enclosingMethod.localVariables)) {
             if (lvn.index == varIdx) {
-                return lvn;
+                matching.add(lvn);
             }
         }
-        throw new IllegalStateException(
-                "Cannot find idx " + varIdx + " on " + enclosingMethod.name + " " + enclosingMethod.desc);
+        if (matching.isEmpty()) {
+            throw new IllegalStateException("Cannot find idx " + varIdx + " on " + enclosingMethod.name + " "
+                    + enclosingMethod.desc + " (no match)");
+        } else if (matching.size() == 1) {
+            return matching.get(0);
+        } else {
+            @Nullable AbstractInsnNode prev = insn.getPrevious();
+            if (prev == null) {
+                throw new IllegalStateException("Cannot find idx " + varIdx + " on " + enclosingMethod.name + " "
+                        + enclosingMethod.desc + " (multiple matches)");
+            }
+            while (true) {
+                while (!(prev instanceof final LabelNode labelNode)) {
+                    prev = prev.getPrevious();
+                }
+                for (final LocalVariableNode match : matching) {
+                    if (match.start.getLabel() == labelNode.getLabel()) {
+                        return match;
+                    }
+                }
+                prev = prev.getPrevious();
+            }
+        }
     }
 
     private static @Nullable String suggestNameFromGetter(
