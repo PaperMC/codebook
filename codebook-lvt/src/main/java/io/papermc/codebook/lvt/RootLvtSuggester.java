@@ -33,6 +33,7 @@ import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.MethodDescriptor;
 import dev.denwav.hypo.model.data.types.JvmType;
+import io.papermc.codebook.lvt.suggestion.FluentGetterSuggester;
 import io.papermc.codebook.lvt.suggestion.GenericSuggester;
 import io.papermc.codebook.lvt.suggestion.LvtSuggester;
 import io.papermc.codebook.lvt.suggestion.MathSuggester;
@@ -76,6 +77,7 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
             SingleVerbSuggester.class,
             VerbPrefixBooleanSuggester.class,
             SingleVerbBooleanSuggester.class,
+            FluentGetterSuggester.class,
             RecordComponentSuggester.class,
             GenericSuggester.class);
 
