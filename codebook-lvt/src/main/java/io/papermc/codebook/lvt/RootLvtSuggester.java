@@ -38,6 +38,7 @@ import io.papermc.codebook.lvt.suggestion.GenericSuggester;
 import io.papermc.codebook.lvt.suggestion.LvtSuggester;
 import io.papermc.codebook.lvt.suggestion.MathSuggester;
 import io.papermc.codebook.lvt.suggestion.NewPrefixSuggester;
+import io.papermc.codebook.lvt.suggestion.PositionsSuggester;
 import io.papermc.codebook.lvt.suggestion.RecordComponentSuggester;
 import io.papermc.codebook.lvt.suggestion.SingleVerbBooleanSuggester;
 import io.papermc.codebook.lvt.suggestion.SingleVerbSuggester;
@@ -73,6 +74,7 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
             MthRandomSuggester.class,
             MathSuggester.class,
             StringSuggester.class,
+            PositionsSuggester.class,
             NewPrefixSuggester.class,
             SingleVerbSuggester.class,
             VerbPrefixBooleanSuggester.class,
