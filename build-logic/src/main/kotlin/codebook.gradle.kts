@@ -16,7 +16,6 @@ repositories {
             includeGroupAndSubgroups("net.fabricmc")
         }
     }
-    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
 }
 
 java {

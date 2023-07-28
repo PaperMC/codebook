@@ -20,7 +20,7 @@
  * USA
  */
 
-@DefaultQualifier(value = NonNull.class)
+@DefaultQualifier(NonNull.class)
 package io.papermc.codebook.exceptions;
 
 import org.checkerframework.checker.nullness.qual.NonNull;

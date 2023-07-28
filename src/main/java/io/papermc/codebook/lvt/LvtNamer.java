@@ -160,14 +160,21 @@ public class LvtNamer {
 
         // Keep track of method parameter mappings that are present, and add them to the current scope
         // These are names which we can assume to be trusted
-        // TODO: We cannot trust these names in local classes or lambda expressions
         if (methodMapping != null) {
             for (int i = 0; i < method.params().size(); i++) {
                 final int paramLvtIndex = toLvtIndex(i, method);
                 final @Nullable MethodParameterMapping paramMapping = getParameterMapping(methodMapping, paramLvtIndex);
                 if (paramMapping != null) {
+                    final String deobfName = paramMapping.getDeobfuscatedName();
+                    if (outerMethod != null) {
+                        // When we are in a closure we actually can't trust these names
+                        // Since other names outside of our control may have been set in the scope prior
+                        if (scopedNames.contains(deobfName)) {
+                            continue;
+                        }
+                    }
                     paramLvtsWithNames[paramIndex++] = paramLvtIndex;
-                    scopedNames.add(paramMapping.getDeobfuscatedName());
+                    scopedNames.add(deobfName);
                 }
             }
         }
@@ -182,6 +189,7 @@ public class LvtNamer {
         // just so we don't overwrite these later
         final int[] ourCapturedLvts =
                 new int[(outerMethodParamLvtIndices == null ? 0 : outerMethodParamLvtIndices.length) + paramIndex];
+        Arrays.fill(ourCapturedLvts, -1);
         // -1 if nothing
         int ourCapturedLvtIndex = 0;
 
@@ -200,6 +208,14 @@ public class LvtNamer {
                         if (ourLvt.index == ourLvtIndex && ourLvt.desc.equals(outerLvt.desc)) {
                             ourLvt.name = outerLvt.name;
                         }
+                    }
+
+                    final int ourLvtParamIndex = fromLvtIndex(ourLvtIndex, method);
+                    // Also update the parameters table if this LVT slot is a parameter
+                    if (ourLvtParamIndex != -1
+                            && node.parameters != null
+                            && node.parameters.size() > ourLvtParamIndex) {
+                        node.parameters.get(ourLvtParamIndex).name = outerLvt.name;
                     }
                 }
             }
@@ -310,18 +326,16 @@ public class LvtNamer {
     }
 
     private static int _getLvtIndex(final int lvtIndex, final MethodData method, final boolean findParam) {
-        if (lvtIndex == 0) {
-            return 0;
-        }
-
         int currentIndex = 0;
         int currentLvtIndex = method.isStatic() ? 0 : 1;
 
         for (final JvmType param : method.params()) {
-            if (currentLvtIndex == lvtIndex) {
-                if (findParam) {
+            if (findParam) {
+                if (currentLvtIndex == lvtIndex) {
                     return currentIndex;
-                } else {
+                }
+            } else {
+                if (currentIndex == lvtIndex) {
                     return currentLvtIndex;
                 }
             }

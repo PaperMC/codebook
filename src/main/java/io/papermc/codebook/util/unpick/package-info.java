@@ -21,7 +21,7 @@
  */
 
 @DefaultQualifier(NonNull.class)
-package io.papermc.codebook;
+package io.papermc.codebook.util.unpick;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
