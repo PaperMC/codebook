@@ -32,6 +32,9 @@ import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.MethodDescriptor;
 import dev.denwav.hypo.model.data.types.JvmType;
+import io.papermc.codebook.lvt.suggestion.RootLvtSuggester;
+import io.papermc.codebook.lvt.suggestion.context.InsnContext;
+import io.papermc.codebook.lvt.suggestion.context.LvtContext;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
@@ -48,14 +51,17 @@ public final class LvtSuggester {
 
     private final HypoContext context;
     private final LvtAssignmentSuggester assignmentSuggester;
+    private final RootLvtSuggester rootLvtSuggester;
 
     public LvtSuggester(final HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions)
             throws IOException {
         this.context = context;
         this.assignmentSuggester = new LvtAssignmentSuggester(context, missedNameSuggestions);
+        this.rootLvtSuggester = new RootLvtSuggester(context, missedNameSuggestions);
     }
 
-    public String suggestName(final MethodNode node, final LocalVariableNode lvt, final Set<String> scopedNames)
+    public String suggestName(
+            final MethodData parent, final MethodNode node, final LocalVariableNode lvt, final Set<String> scopedNames)
             throws IOException {
         @Nullable VarInsnNode assignmentNode = null;
         // `insn` could represent the first instruction, so check if there actually is a previous instruction
@@ -90,7 +96,7 @@ public final class LvtSuggester {
         }
 
         if (assignmentNode != null) {
-            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(assignmentNode);
+            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(parent, assignmentNode);
             if (suggestedName != null) {
                 return determineFinalName(suggestedName, scopedNames);
             }
@@ -123,7 +129,8 @@ public final class LvtSuggester {
         }
     }
 
-    private @Nullable String suggestNameFromFirstAssignment(final VarInsnNode varInsn) throws IOException {
+    private @Nullable String suggestNameFromFirstAssignment(final MethodData parent, final VarInsnNode varInsn)
+            throws IOException {
         final AbstractInsnNode prev = varInsn.getPrevious();
         final int op = prev.getOpcode();
         if (op != Opcodes.INVOKESTATIC && op != Opcodes.INVOKEVIRTUAL && op != Opcodes.INVOKEINTERFACE) {
@@ -142,6 +149,10 @@ public final class LvtSuggester {
             return null;
         }
 
+        if (true) {
+            return this.rootLvtSuggester.suggestFromMethod(
+                    LvtContext.method(InsnContext.method(parent), methodInsnNode, method));
+        }
         return this.assignmentSuggester.suggestNameFromAssignment(
                 (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
     }

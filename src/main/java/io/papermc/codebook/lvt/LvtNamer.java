@@ -316,7 +316,7 @@ public class LvtNamer {
             }
 
             final String selectedName =
-                    mappedName != null ? mappedName : this.lvtSuggester.suggestName(node, lvt, scopedNames);
+                    mappedName != null ? mappedName : this.lvtSuggester.suggestName(method, node, lvt, scopedNames);
 
             lvt.name = selectedName;
             usedNames[usedNameIndex++] = new UsedLvtName(lvt.name, lvt.desc, lvt.index);
