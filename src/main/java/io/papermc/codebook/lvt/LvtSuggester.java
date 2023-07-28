@@ -23,6 +23,7 @@
 package io.papermc.codebook.lvt;
 
 import static dev.denwav.hypo.model.data.MethodDescriptor.parseDescriptor;
+import static io.papermc.codebook.lvt.LvtUtil.prevInsnIgnoringConvertCast;
 import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
 import dev.denwav.hypo.asm.AsmClassData;
@@ -127,7 +128,10 @@ public final class LvtSuggester {
 
     private @Nullable String suggestNameFromFirstAssignment(
             final MethodNode enclosingMethodNode, final VarInsnNode varInsn) throws IOException {
-        final AbstractInsnNode prev = varInsn.getPrevious();
+        final @Nullable AbstractInsnNode prev = prevInsnIgnoringConvertCast(varInsn);
+        if (prev == null) {
+            return null;
+        }
         final int op = prev.getOpcode();
         if (op != Opcodes.INVOKESTATIC && op != Opcodes.INVOKEVIRTUAL && op != Opcodes.INVOKEINTERFACE) {
             return null;

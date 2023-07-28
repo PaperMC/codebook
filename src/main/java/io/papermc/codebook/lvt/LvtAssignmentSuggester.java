@@ -24,6 +24,7 @@ package io.papermc.codebook.lvt;
 
 import static io.papermc.codebook.lvt.LvtUtil.capitalize;
 import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
+import static io.papermc.codebook.lvt.LvtUtil.prevInsnIgnoringConvertCast;
 import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
 import dev.denwav.hypo.asm.AsmClassData;
@@ -69,6 +70,7 @@ public class LvtAssignmentSuggester {
             this::suggestNameForMcMthRandom,
             LvtAssignmentSuggester::suggestNameForSectionPos,
             LvtAssignmentSuggester::suggestNameForQuartPos,
+            LvtAssignmentSuggester::suggestNameForBlockPos,
             LvtAssignmentSuggester::suggestNameFromGetter,
             LvtAssignmentSuggester::suggestNameFromVerbBoolean,
             this::suggestNameFromSingleWorldVerbBoolean,
@@ -273,7 +275,20 @@ public class LvtAssignmentSuggester {
         }
     }
 
-    private record MethodPair(PosType returnType, PosType paramType) {}
+    private record MethodConfig(PosType returnType, PosType paramType, String prefix) {
+
+        private MethodConfig(final PosType returnType, final PosType paramType) {
+            this(returnType, paramType, "");
+        }
+
+        String varName(final String suffix) {
+            if (this.prefix.isEmpty()) {
+                return this.returnType.localName + suffix;
+            } else {
+                return this.prefix + capitalize(this.returnType.localName, 0) + suffix;
+            }
+        }
+    }
 
     public static @Nullable String suggestNameForSectionPos(
             final MethodNode enclosingMethodNode,
@@ -291,24 +306,25 @@ public class LvtAssignmentSuggester {
                     case "x" -> "sectionX";
                     case "y" -> "sectionY";
                     case "z" -> "sectionZ";
-                    case "blockToSection" -> "packedSectionPos";
+                    case "blockToSection", "asLong" -> "packedSectionPos";
                     default -> null;
                 };
         if (possibleSimpleName != null) {
             return possibleSimpleName;
         }
 
-        final @Nullable MethodPair methodPair =
+        final @Nullable MethodConfig methodConfig =
                 switch (method.name()) {
-                    case "blockToSectionCoord" -> new MethodPair(PosType.SECTION, PosType.BLOCK);
-                    case "sectionToBlockCoord" -> new MethodPair(PosType.BLOCK, PosType.SECTION);
+                    case "blockToSectionCoord", "posToSectionCoord" -> new MethodConfig(PosType.SECTION, PosType.BLOCK);
+                    case "sectionToBlockCoord" -> new MethodConfig(PosType.BLOCK, PosType.SECTION);
+                    case "sectionRelative" -> new MethodConfig(PosType.BLOCK, PosType.BLOCK, "relative");
                     default -> null;
                 };
 
-        return getCoordLocalNameFromMethodPair(enclosingMethodNode, insn, methodPair);
+        return getCoordLocalNameFromMethodPair(enclosingMethodNode, insn, method, methodConfig);
     }
 
-    public static @Nullable String suggestNameForQuartPos(
+    private static @Nullable String suggestNameForQuartPos(
             final MethodNode enclosingMethodNode,
             final AsmClassData owner,
             final AsmMethodData method,
@@ -321,64 +337,115 @@ public class LvtAssignmentSuggester {
             return null;
         }
 
-        final @Nullable MethodPair methodPair =
+        final @Nullable MethodConfig methodConfig =
                 switch (method.name()) {
-                    case "fromBlock" -> new MethodPair(PosType.QUART, PosType.BLOCK);
-                    case "toBlock" -> new MethodPair(PosType.BLOCK, PosType.QUART);
-                    case "fromSection" -> new MethodPair(PosType.QUART, PosType.SECTION);
-                    case "toSection" -> new MethodPair(PosType.SECTION, PosType.QUART);
+                    case "fromBlock" -> new MethodConfig(PosType.QUART, PosType.BLOCK);
+                    case "toBlock" -> new MethodConfig(PosType.BLOCK, PosType.QUART);
+                    case "fromSection" -> new MethodConfig(PosType.QUART, PosType.SECTION);
+                    case "toSection" -> new MethodConfig(PosType.SECTION, PosType.QUART);
                     default -> null;
                 };
-        if (methodPair == null) {
+        if (methodConfig == null) {
             return null;
         }
 
-        return getCoordLocalNameFromMethodPair(enclosingMethodNode, insn, methodPair);
+        return getCoordLocalNameFromMethodPair(enclosingMethodNode, insn, method, methodConfig);
     }
 
-    private static @Nullable String getCoordLocalNameFromMethodPair(
-            final MethodNode enclosingMethodNode, final MethodInsnNode insn, final @Nullable MethodPair methodPair) {
-        if (methodPair == null) {
+    private static @Nullable String suggestNameForBlockPos(
+            final MethodNode enclosingMethodNode,
+            final AsmClassData owner,
+            final AsmMethodData method,
+            final MethodInsnNode insn) {
+        if (!"net/minecraft/core/BlockPos".equals(owner.name())) {
             return null;
         }
 
-        final AbstractInsnNode prev = insn.getPrevious();
+        final String suggestion;
+        if (method.name().equals("asLong")) {
+            suggestion = "packedBlockPos";
+        } else if (method.isStatic() && method.name().equals("offset") && method.returnType() == PrimitiveType.LONG) {
+            suggestion = "offsetPackedBlockPos";
+        } else {
+            return null;
+        }
+        return suggestion;
+    }
 
-        if (prev instanceof final VarInsnNode varNode) {
-            final LocalVariableNode paramNode = findLocalVar(enclosingMethodNode, insn, varNode.var);
-            // get last character to account for "blockX", "biomeZ", etc.
-            final int possibleCoordIdx = getPossibleCoordIdx(paramNode.name);
-            if (possibleCoordIdx > -1
-                    && (paramNode.name.length() == 1
-                            || methodPair.paramType.possibleNames.contains(paramNode
-                                    .name
-                                    .substring(0, possibleCoordIdx)
-                                    .toLowerCase(Locale.ENGLISH)))) {
-                return methodPair.returnType.localName + Character.toUpperCase(paramNode.name.charAt(possibleCoordIdx));
-            }
-        } else if (prev instanceof final MethodInsnNode methodNode) {
-            final String name = methodNode.name.startsWith("get") ? methodNode.name.substring(3) : methodNode.name;
-            final int possibleCoordIdx = getPossibleCoordIdx(name);
-            if (possibleCoordIdx > -1) {
-                return methodPair.returnType.localName + Character.toUpperCase(name.charAt(possibleCoordIdx));
-            }
+    private static final String[] COMMON_PERSISTENT_PREFIXES = new String[] {"min", "max"};
+
+    private static @Nullable String getCoordLocalNameFromMethodPair(
+            final MethodNode enclosingMethodNode,
+            final MethodInsnNode insn,
+            final AsmMethodData method,
+            final @Nullable MethodConfig methodConfig) {
+        if (methodConfig == null) {
+            return null;
         }
 
-        return methodPair.returnType.localName;
+        if (method.params().size() != 1) {
+            // add "Coord" since we don't know if its x, y, or z and more
+            // than 1 param makes it too complex to figure out
+            return methodConfig.varName("Coord");
+        }
+
+        final AbstractInsnNode prev = Objects.requireNonNull(prevInsnIgnoringConvertCast(insn));
+        @Nullable String suggestion = null;
+        if (prev instanceof final VarInsnNode varNode) {
+            final LocalVariableNode paramVarNode = findLocalVar(enclosingMethodNode, insn, varNode.var);
+            suggestion = suggestSpecificCoordName(methodConfig, paramVarNode.name, COMMON_PERSISTENT_PREFIXES);
+        } else if (prev instanceof final MethodInsnNode methodNode) {
+            final @Nullable String strippedName =
+                    methodNode.name.startsWith("get") ? decapitalize(methodNode.name, 3) : methodNode.name;
+            if (strippedName != null) {
+                suggestion = suggestSpecificCoordName(methodConfig, strippedName, COMMON_PERSISTENT_PREFIXES);
+            }
+        } else if (prev instanceof final FieldInsnNode fieldNode && fieldNode.getOpcode() == Opcodes.GETFIELD) {
+            suggestion = suggestSpecificCoordName(methodConfig, fieldNode.name, COMMON_PERSISTENT_PREFIXES);
+        }
+        return Objects.requireNonNullElseGet(
+                suggestion, () -> methodConfig.varName("Coord")); // add "Coord" since we don't know if its x, y, or z
+    }
+
+    private static @Nullable String suggestSpecificCoordName(
+            final MethodConfig methodConfig, final String fullName, final String... persistentPrefixes) {
+        String prefix = "";
+        if (fullName.length() > 1) {
+            for (final String persistentPrefix : persistentPrefixes) {
+                if (fullName.startsWith(persistentPrefix)) {
+                    prefix = persistentPrefix;
+                    break;
+                }
+            }
+        }
+        final String nameWithoutPrefix = fullName.substring(prefix.length());
+        final int possibleCoordIdx = getPossibleCoordIdx(nameWithoutPrefix);
+        if (possibleCoordIdx > -1
+                && (nameWithoutPrefix.length() == 1
+                        || methodConfig.paramType.possibleNames.contains(
+                                nameWithoutPrefix.substring(0, possibleCoordIdx).toLowerCase(Locale.ENGLISH)))) {
+            return methodConfig.varName(
+                    capitalize(prefix, 0) + Character.toUpperCase(nameWithoutPrefix.charAt(possibleCoordIdx)));
+        }
+        return null;
     }
 
     private static int getPossibleCoordIdx(final String name) {
         for (int i = name.length() - 1; i >= 0; i--) {
-            final char ch = Character.toUpperCase(name.charAt(i));
+            final char ch = name.charAt(i);
             if (!Character.isAlphabetic(ch)) {
                 continue;
             }
-            if (ch == 'X' || ch == 'Y' || ch == 'Z') {
+            if (isCoord(ch)) {
                 return i;
             }
             return -1;
         }
         return -1; // don't think this is possible
+    }
+
+    private static boolean isCoord(final char ch) {
+        return ch == 'X' || ch == 'Y' || ch == 'Z' || ch == 'x' || ch == 'y' || ch == 'z';
     }
 
     private static LocalVariableNode findLocalVar(

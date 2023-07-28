@@ -25,7 +25,9 @@ package io.papermc.codebook.lvt;
 import dev.denwav.hypo.asm.HypoAsmUtil;
 import dev.denwav.hypo.model.data.types.JvmType;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AbstractInsnNode;
 
 public final class LvtUtil {
 
@@ -36,6 +38,9 @@ public final class LvtUtil {
     }
 
     public static String capitalize(final String name, final int index) {
+        if (name.isEmpty()) {
+            return name;
+        }
         return Character.toUpperCase(name.charAt(index)) + name.substring(index + 1);
     }
 
@@ -48,5 +53,15 @@ public final class LvtUtil {
         } else {
             return Character.toLowerCase(name.charAt(index)) + name.substring(index + 1);
         }
+    }
+
+    public static @Nullable AbstractInsnNode prevInsnIgnoringConvertCast(final AbstractInsnNode insn) {
+        @Nullable AbstractInsnNode prev = insn.getPrevious();
+        while (prev != null
+                && (prev.getOpcode() == Opcodes.CHECKCAST
+                        || (prev.getOpcode() >= Opcodes.I2L && prev.getOpcode() <= Opcodes.I2S))) {
+            prev = prev.getPrevious();
+        }
+        return prev;
     }
 }
