@@ -29,22 +29,17 @@ import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
-import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.MemberData;
-import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
 import dev.denwav.hypo.model.data.types.PrimitiveType;
-import io.papermc.codebook.exceptions.UnexpectedException;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -53,13 +48,9 @@ import org.objectweb.asm.tree.MethodInsnNode;
 
 public class LvtAssignmentSuggester {
 
-    private static final String RANDOM_SOURCE_NAME = "net/minecraft/util/RandomSource";
-
     private final List<NameSuggester> suggesters = List.of(
             LvtAssignmentSuggester::suggestGeneric,
             LvtAssignmentSuggester::suggestNameFromRecord,
-            this::suggestNameForRandomSource,
-            this::suggestNameForMcMthRandom,
             LvtAssignmentSuggester::suggestNameFromGetter,
             LvtAssignmentSuggester::suggestNameFromVerbBoolean,
             this::suggestNameFromSingleWorldVerbBoolean,
@@ -73,18 +64,9 @@ public class LvtAssignmentSuggester {
     private final HypoContext context;
     public final Map<String, AtomicInteger> missedNameSuggestions;
 
-    private final ClassData randomSourceClass;
-
-    public LvtAssignmentSuggester(final HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions)
-            throws IOException {
+    public LvtAssignmentSuggester(final HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions) {
         this.context = context;
         this.missedNameSuggestions = missedNameSuggestions;
-
-        final @Nullable ClassData random = this.context.getContextProvider().findClass(RANDOM_SOURCE_NAME);
-        if (random == null) {
-            throw new UnexpectedException("Cannot find " + RANDOM_SOURCE_NAME + " on the classpath.");
-        }
-        this.randomSourceClass = random;
     }
 
     public @Nullable String suggestNameFromAssignment(
@@ -140,94 +122,6 @@ public class LvtAssignmentSuggester {
         }
 
         return null;
-    }
-
-    private @Nullable String suggestNameForRandomSource(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
-        final String methodName = method.name();
-        ClassData ownerClass = owner;
-        if (owner.doesExtendOrImplement(this.randomSourceClass)) {
-            ownerClass = this.randomSourceClass;
-        }
-
-        if (!ownerClass.equals(this.randomSourceClass)) {
-            return null;
-        }
-
-        if (!methodName.startsWith("next") || "next".equals(methodName)) {
-            return null;
-        }
-
-        return createNextRandomName(method);
-    }
-
-    private @Nullable String suggestNameForMcMthRandom(
-            final AsmClassData owner, final AsmMethodData method, final MethodInsnNode insn) {
-        final String methodName = method.name();
-        if (!owner.name().equals("net/minecraft/util/Mth")) {
-            return null;
-        }
-
-        if (!methodName.startsWith("next") || "next".equals(methodName)) {
-            return null;
-        }
-
-        final List<JvmType> params = method.params();
-        if (params.isEmpty() || !params.get(0).asInternalName().equals("Lnet/minecraft/util/RandomSource;")) {
-            return null;
-        }
-
-        return createNextRandomName(method);
-    }
-
-    private static @Nullable String createNextRandomName(final MethodData method) {
-        final @Nullable Predicate<String> expectedNextWord = expectedNextWordForRandomGen(method);
-        if (expectedNextWord == null) {
-            return null;
-        }
-
-        final String nextWord = getNextWord("next".length(), method.name());
-        if (expectedNextWord.test(nextWord)) {
-            return "random" + nextWord;
-        }
-        return null;
-    }
-
-    private static Predicate<String> equalsAny(final String... strings) {
-        return s -> Arrays.stream(strings).anyMatch(Predicate.isEqual(s));
-    }
-
-    private static @Nullable Predicate<String> expectedNextWordForRandomGen(final MethodData method) {
-        if (!(method.returnType() instanceof final PrimitiveType primitiveType)) {
-            return null;
-        }
-
-        return switch (primitiveType) {
-            case CHAR -> equalsAny("Char", "Character");
-            case BYTE -> equalsAny("Byte");
-            case SHORT -> equalsAny("Short");
-            case INT -> equalsAny("Int", "Integer");
-            case LONG -> equalsAny("Long");
-            case FLOAT -> equalsAny("Float");
-            case DOUBLE -> equalsAny("Double");
-            case BOOLEAN -> equalsAny("Bool", "Boolean");
-            default -> null;
-        };
-    }
-
-    private static String getNextWord(final int start, final String str) {
-        final StringBuilder nextWord = new StringBuilder();
-        for (int i = start; i < str.length(); i++) {
-            final char ch = str.charAt(i);
-            if (nextWord.isEmpty()) {
-                nextWord.append(ch);
-            } else if (!Character.isUpperCase(ch)) {
-                nextWord.append(ch);
-            } else {
-                break;
-            }
-        }
-        return nextWord.toString();
     }
 
     private static @Nullable String suggestNameFromGetter(

@@ -24,6 +24,8 @@ package io.papermc.codebook.lvt;
 
 import dev.denwav.hypo.asm.HypoAsmUtil;
 import dev.denwav.hypo.model.data.types.JvmType;
+import java.util.Arrays;
+import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Type;
 
@@ -48,5 +50,24 @@ public final class LvtUtil {
         } else {
             return Character.toLowerCase(name.charAt(index)) + name.substring(index + 1);
         }
+    }
+
+    public static Predicate<String> equalsAny(final String... strings) {
+        return s -> Arrays.stream(strings).anyMatch(Predicate.isEqual(s));
+    }
+
+    public static String findNextWord(final int start, final String str) {
+        final StringBuilder nextWord = new StringBuilder();
+        for (int i = start; i < str.length(); i++) {
+            final char ch = str.charAt(i);
+            if (nextWord.isEmpty()) {
+                nextWord.append(ch);
+            } else if (!Character.isUpperCase(ch)) {
+                nextWord.append(ch);
+            } else {
+                break;
+            }
+        }
+        return nextWord.toString();
     }
 }

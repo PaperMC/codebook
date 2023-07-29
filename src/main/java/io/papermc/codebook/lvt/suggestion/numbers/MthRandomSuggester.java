@@ -20,21 +20,38 @@
  * USA
  */
 
-package io.papermc.codebook.lvt.suggestion;
+package io.papermc.codebook.lvt.suggestion.numbers;
 
+import static io.papermc.codebook.lvt.suggestion.numbers.RandomUtil.createNextRandomName;
+
+import dev.denwav.hypo.model.data.types.JvmType;
+import io.papermc.codebook.lvt.suggestion.InjectedLvtSuggester;
 import io.papermc.codebook.lvt.suggestion.context.LvtContext.Method;
+import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class GenericSuggester extends InjectedLvtSuggester {
+// primitive random-related methods in Mth
+public class MthRandomSuggester extends InjectedLvtSuggester {
+
+    static final String MTH_NAME = "net/minecraft/util/Mth";
 
     @Override
     public @Nullable String suggestFromMethod(final Method ctx) {
-        return switch (ctx.data().name()) {
-            case "hashCode" -> "hashCode";
-            case "size" -> "size";
-            case "length" -> "len";
-            case "freeze" -> "frozen";
-            default -> null;
-        };
+        final String methodName = ctx.data().name();
+        if (!ctx.owner().name().equals(MTH_NAME)) {
+            return null;
+        }
+
+        if (!methodName.startsWith("next") || "next".equals(methodName)) {
+            return null;
+        }
+
+        final List<JvmType> params = ctx.data().params();
+        if (params.isEmpty()
+                || !params.get(0).asInternalName().equals(RandomSourceSuggester.RANDOM_SOURCE_TYPE.asInternalName())) {
+            return null;
+        }
+
+        return createNextRandomName(ctx.data());
     }
 }

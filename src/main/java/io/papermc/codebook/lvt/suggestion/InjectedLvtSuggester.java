@@ -25,7 +25,7 @@ package io.papermc.codebook.lvt.suggestion;
 import dev.denwav.hypo.core.HypoContext;
 import jakarta.inject.Inject;
 
-abstract class InjectedLvtSuggester implements LvtSuggester {
+public abstract class InjectedLvtSuggester implements LvtSuggester {
 
     @Inject
     protected HypoContext hypoContext;

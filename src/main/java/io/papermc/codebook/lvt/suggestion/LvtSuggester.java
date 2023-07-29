@@ -23,15 +23,16 @@
 package io.papermc.codebook.lvt.suggestion;
 
 import io.papermc.codebook.lvt.suggestion.context.LvtContext;
+import java.io.IOException;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-interface LvtSuggester {
+public interface LvtSuggester {
 
-    default @Nullable String suggestFromMethod(final LvtContext.Method ctx) {
+    default @Nullable String suggestFromMethod(final LvtContext.Method ctx) throws IOException {
         return null;
     }
 
-    default @Nullable String suggestFromField(final LvtContext.Field ctx) {
+    default @Nullable String suggestFromField(final LvtContext.Field ctx) throws IOException {
         return null;
     }
 }

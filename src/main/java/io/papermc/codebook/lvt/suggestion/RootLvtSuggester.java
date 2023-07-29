@@ -28,6 +28,9 @@ import com.google.inject.Injector;
 import dev.denwav.hypo.core.HypoContext;
 import io.papermc.codebook.lvt.suggestion.context.LvtContext.Field;
 import io.papermc.codebook.lvt.suggestion.context.LvtContext.Method;
+import io.papermc.codebook.lvt.suggestion.numbers.MthRandomSuggester;
+import io.papermc.codebook.lvt.suggestion.numbers.RandomSourceSuggester;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,7 +38,11 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class RootLvtSuggester extends AbstractModule implements LvtSuggester {
 
-    private static final List<Class<? extends LvtSuggester>> SUGGESTERS = List.of(GenericSuggester.class);
+    // the order of these is somewhat important. Generally, owning-class-specific suggesters
+    // should be first, like RandomSource or Mth. Then more general suggesters that only check
+    // the method name should follow.
+    private static final List<Class<? extends LvtSuggester>> SUGGESTERS =
+            List.of(RandomSourceSuggester.class, MthRandomSuggester.class, GenericSuggester.class);
 
     private final HypoContext hypoContext;
     public final Map<String, AtomicInteger> missedNameSuggestions;
@@ -54,7 +61,7 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
     }
 
     @Override
-    public @Nullable String suggestFromMethod(final Method ctx) {
+    public @Nullable String suggestFromMethod(final Method ctx) throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {
             suggestion = delegate.suggestFromMethod(ctx);
@@ -70,7 +77,7 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
     }
 
     @Override
-    public @Nullable String suggestFromField(final Field ctx) {
+    public @Nullable String suggestFromField(final Field ctx) throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {
             suggestion = delegate.suggestFromField(ctx);

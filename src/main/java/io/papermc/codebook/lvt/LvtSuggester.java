@@ -149,9 +149,11 @@ public final class LvtSuggester {
             return null;
         }
 
-        if (true) {
-            return this.rootLvtSuggester.suggestFromMethod(
+
+        final @Nullable String suggestion = this.rootLvtSuggester.suggestFromMethod(
                     LvtContext.method(InsnContext.method(parent), methodInsnNode, method));
+        if (suggestion != null) {
+            return suggestion;
         }
         return this.assignmentSuggester.suggestNameFromAssignment(
                 (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
