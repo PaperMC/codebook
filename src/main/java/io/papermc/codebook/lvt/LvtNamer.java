@@ -29,6 +29,8 @@ import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.generic.HypoHydration;
 import dev.denwav.hypo.hydrate.generic.MethodClosure;
 import dev.denwav.hypo.model.data.ClassData;
+import dev.denwav.hypo.model.data.ClassKind;
+import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.HypoKey;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
@@ -42,7 +44,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.ParameterNode;
@@ -152,7 +153,7 @@ public class LvtNamer {
         if (node.localVariables == null) {
             // interface / abstract methods don't have LVT
             // But we still need to set param names
-            final List<@NotNull JvmType> paramTypes = method.descriptor().getParams();
+            final List<JvmType> paramTypes = method.descriptor().getParams();
             final int paramCount = paramTypes.size();
 
             if (node.parameters == null) {
@@ -282,7 +283,14 @@ public class LvtNamer {
             if (mappedName != null) {
                 selectedName = mappedName;
             } else {
-                selectedName = this.lvtSuggester.suggestName(node, lvt, scopedNames);
+                @Nullable String name = null;
+                if (parentClass.kind() == ClassKind.RECORD && method.name().equals("<init>")) {
+                    name = this.remapRecordParameter(lvt, method);
+                }
+                if (name == null) {
+                    name = this.lvtSuggester.suggestName(node, lvt, scopedNames);
+                }
+                selectedName = name;
             }
 
             lvt.name = selectedName;
@@ -299,6 +307,30 @@ public class LvtNamer {
     }
 
     private record UsedLvtName(String name, String desc, int index) {}
+
+    private @Nullable String remapRecordParameter(final LocalVariableNode lvt, final MethodData method) {
+        // use record component names for primary constructor
+        final int paramIndex = fromLvtToParamIndex(lvt.index, method);
+        if (paramIndex == -1) {
+            return null;
+        }
+        final @Nullable List<FieldData> comp = method.parentClass().recordComponents();
+        if (comp == null) {
+            throw new IllegalStateException("No record components found on record");
+        }
+
+        if (comp.size() != method.params().size()) {
+            return null;
+        } else {
+            for (int i = 0; i < comp.size(); i++) {
+                if (!comp.get(i).fieldType().equals(method.param(i))) {
+                    return null;
+                }
+            }
+        }
+
+        return comp.get(paramIndex).name();
+    }
 
     private static int find(final int[] array, final int value) {
         return find(array, value, array.length);
