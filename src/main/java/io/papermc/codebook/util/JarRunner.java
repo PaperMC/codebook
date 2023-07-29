@@ -45,6 +45,7 @@ public final class JarRunner {
     private final String name;
     private final List<Path> jars;
     private final List<String> arguments = new ArrayList<>();
+    private @Nullable String mainClass = null;
 
     private JarRunner(final String name, final List<Path> jars) {
         this.name = name;
@@ -66,6 +67,11 @@ public final class JarRunner {
         return this;
     }
 
+    public JarRunner withMainClass(final String mainClass) {
+        this.mainClass = mainClass;
+        return this;
+    }
+
     public void run() {
         final URL[] urls;
         try {
@@ -77,7 +83,7 @@ public final class JarRunner {
         }
 
         try (final URLClassLoader loader = new URLClassLoader(urls)) {
-            final Method mainMethod = this.getMainMethod(loader, this.jars);
+            final Method mainMethod = this.getMainMethod(loader);
 
             final Thread thread = this.createThread(mainMethod, loader);
             thread.start();
@@ -107,27 +113,31 @@ public final class JarRunner {
         return thread;
     }
 
-    private Method getMainMethod(final URLClassLoader loader, final List<Path> jars) throws IOException {
-        for (final Path jar : jars) {
+    private Method getMainMethod(final URLClassLoader loader) throws IOException {
+        for (final Path jar : this.jars) {
             final @Nullable Method mainMethod = this.getMainMethod0(loader, jar);
             if (mainMethod != null) {
                 return mainMethod;
             }
         }
 
-        throw new UnexpectedException("Failed to find main class in jars: " + jars);
+        throw new UnexpectedException("Failed to find main class in jars: " + this.jars);
     }
 
     private @Nullable Method getMainMethod0(final URLClassLoader loader, final Path jar) throws IOException {
         final @Nullable String mainClassName;
-        try (final FileSystem fs = FileSystems.newFileSystem(jar)) {
-            final Path manifest = fs.getPath("/", "META-INF", "MANIFEST.MF");
-            if (Files.notExists(manifest)) {
-                return null;
-            }
+        if (this.mainClass != null) {
+            mainClassName = this.mainClass;
+        } else {
+            try (final FileSystem fs = FileSystems.newFileSystem(jar)) {
+                final Path manifest = fs.getPath("/", "META-INF", "MANIFEST.MF");
+                if (Files.notExists(manifest)) {
+                    return null;
+                }
 
-            try (final InputStream input = Files.newInputStream(manifest)) {
-                mainClassName = new Manifest(input).getMainAttributes().getValue("Main-Class");
+                try (final InputStream input = Files.newInputStream(manifest)) {
+                    mainClassName = new Manifest(input).getMainAttributes().getValue("Main-Class");
+                }
             }
         }
 

@@ -42,8 +42,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.ParameterNode;
 import org.parchmentmc.feather.mapping.MappingDataContainer;
 
 public class LvtNamer {
@@ -51,11 +53,13 @@ public class LvtNamer {
     public static final HypoKey<Set<String>> SCOPED_NAMES = HypoKey.create("Scoped Names");
 
     private final MappingDataContainer mappings;
+    private final HypoContext context;
     private final LvtSuggester lvtSuggester;
     public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
 
     public LvtNamer(final HypoContext context, final MappingDataContainer mappings) throws IOException {
         this.mappings = mappings;
+        this.context = context;
         this.lvtSuggester = new LvtSuggester(context, this.missedNameSuggestions);
     }
 
@@ -146,6 +150,36 @@ public class LvtNamer {
 
         // If there's no LVT table there's nothing for us to process
         if (node.localVariables == null) {
+            // interface / abstract methods don't have LVT
+            // But we still need to set param names
+            final List<@NotNull JvmType> paramTypes = method.descriptor().getParams();
+            final int paramCount = paramTypes.size();
+
+            if (node.parameters == null) {
+                node.parameters = Arrays.asList(new ParameterNode[paramCount]);
+            }
+
+            for (int i = 0; i < paramCount; i++) {
+                // always (i + 1) because abstract methods are never static
+                final MappingDataContainer.@Nullable ParameterData paramMapping =
+                        methodMapping != null ? methodMapping.getParameter((byte) (i + 1)) : null;
+                @Nullable String paramName = null;
+                if (paramMapping != null) {
+                    paramName = paramMapping.getName();
+                }
+
+                if (paramName == null) {
+                    paramName = LvtTypeSuggester.suggestNameFromType(this.context, paramTypes.get(i));
+                }
+
+                final String finalName = LvtSuggester.determineFinalName(paramName, scopedNames);
+                if (node.parameters.get(i) == null) {
+                    node.parameters.set(i, new ParameterNode(finalName, 0));
+                } else {
+                    node.parameters.get(i).name = finalName;
+                }
+            }
+
             method.store(SCOPED_NAMES, scopedNames);
             return;
         }

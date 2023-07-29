@@ -56,6 +56,7 @@ public final class RemapJarPage extends CodeBookPage {
         final Path remapped = this.tempDir.resolve("remapped.jar");
 
         JarRunner.of("AutoRenamingTool", this.remapper)
+                .withMainClass("net.minecraftforge.fart.Main")
                 .withArgs(
                         "--input=" + IOUtil.absolutePathString(this.inputJar),
                         "--output=" + IOUtil.absolutePathString(remapped),
