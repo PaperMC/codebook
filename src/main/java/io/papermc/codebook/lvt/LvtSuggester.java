@@ -149,9 +149,8 @@ public final class LvtSuggester {
             return null;
         }
 
-
         final @Nullable String suggestion = this.rootLvtSuggester.suggestFromMethod(
-                    LvtContext.method(InsnContext.method(parent), methodInsnNode, method));
+                LvtContext.method(InsnContext.method(parent), methodInsnNode, method));
         if (suggestion != null) {
             return suggestion;
         }

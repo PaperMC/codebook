@@ -28,11 +28,11 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 public interface LvtSuggester {
 
-    default @Nullable String suggestFromMethod(final LvtContext.Method ctx) throws IOException {
+    default @Nullable String suggestFromMethod(final LvtContext.Method method) throws IOException {
         return null;
     }
 
-    default @Nullable String suggestFromField(final LvtContext.Field ctx) throws IOException {
+    default @Nullable String suggestFromField(final LvtContext.Field field) throws IOException {
         return null;
     }
 }

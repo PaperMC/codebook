@@ -61,26 +61,27 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
     }
 
     @Override
-    public @Nullable String suggestFromMethod(final Method ctx) throws IOException {
+    public @Nullable String suggestFromMethod(final Method method) throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {
-            suggestion = delegate.suggestFromMethod(ctx);
+            suggestion = delegate.suggestFromMethod(method);
             if (suggestion != null) {
                 return suggestion;
             }
         }
         this.missedNameSuggestions
                 .computeIfAbsent(
-                        ctx.data().name() + "," + ctx.insn().owner + "," + ctx.insn().desc, (k) -> new AtomicInteger(0))
+                        method.data().name() + "," + method.insn().owner + "," + method.insn().desc,
+                        (k) -> new AtomicInteger(0))
                 .incrementAndGet();
         return null;
     }
 
     @Override
-    public @Nullable String suggestFromField(final Field ctx) throws IOException {
+    public @Nullable String suggestFromField(final Field field) throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {
-            suggestion = delegate.suggestFromField(ctx);
+            suggestion = delegate.suggestFromField(field);
             if (suggestion != null) {
                 return suggestion;
             }

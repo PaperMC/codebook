@@ -36,9 +36,9 @@ public class MthRandomSuggester extends InjectedLvtSuggester {
     static final String MTH_NAME = "net/minecraft/util/Mth";
 
     @Override
-    public @Nullable String suggestFromMethod(final Method ctx) {
-        final String methodName = ctx.data().name();
-        if (!ctx.owner().name().equals(MTH_NAME)) {
+    public @Nullable String suggestFromMethod(final Method method) {
+        final String methodName = method.data().name();
+        if (!method.owner().name().equals(MTH_NAME)) {
             return null;
         }
 
@@ -46,12 +46,12 @@ public class MthRandomSuggester extends InjectedLvtSuggester {
             return null;
         }
 
-        final List<JvmType> params = ctx.data().params();
+        final List<JvmType> params = method.data().params();
         if (params.isEmpty()
                 || !params.get(0).asInternalName().equals(RandomSourceSuggester.RANDOM_SOURCE_TYPE.asInternalName())) {
             return null;
         }
 
-        return createNextRandomName(ctx.data());
+        return createNextRandomName(method.data());
     }
 }

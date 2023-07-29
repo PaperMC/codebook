@@ -28,8 +28,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 public class GenericSuggester extends InjectedLvtSuggester {
 
     @Override
-    public @Nullable String suggestFromMethod(final Method ctx) {
-        return switch (ctx.data().name()) {
+    public @Nullable String suggestFromMethod(final Method method) {
+        return switch (method.data().name()) {
             case "hashCode" -> "hashCode";
             case "size" -> "size";
             case "length" -> "len";

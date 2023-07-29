@@ -44,9 +44,9 @@ public class RandomSourceSuggester extends InjectedLvtSuggester {
     private ClassData randomSourceClass = null;
 
     @Override
-    public @Nullable String suggestFromMethod(final Method ctx) throws IOException {
-        final String methodName = ctx.data().name();
-        ClassData ownerClass = ctx.owner();
+    public @Nullable String suggestFromMethod(final Method method) throws IOException {
+        final String methodName = method.data().name();
+        ClassData ownerClass = method.owner();
         if (ownerClass.doesExtendOrImplement(this.randomSourceClass())) {
             ownerClass = this.randomSourceClass();
         }
@@ -59,7 +59,7 @@ public class RandomSourceSuggester extends InjectedLvtSuggester {
             return null;
         }
 
-        return createNextRandomName(ctx.data());
+        return createNextRandomName(method.data());
     }
 
     @EnsuresNonNull("randomSourceClass")
