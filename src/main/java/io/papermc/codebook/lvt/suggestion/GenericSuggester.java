@@ -22,15 +22,10 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
-import dev.denwav.hypo.core.HypoContext;
 import io.papermc.codebook.lvt.suggestion.context.LvtContext.Method;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class GenericSuggester extends LvtSuggester {
-
-    public GenericSuggester(final HypoContext hypoContext) {
-        super(hypoContext);
-    }
+class GenericSuggester extends InjectedLvtSuggester {
 
     @Override
     public @Nullable String suggestFromMethod(final Method ctx) {

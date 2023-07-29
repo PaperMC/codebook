@@ -22,16 +22,11 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
-import io.papermc.codebook.lvt.suggestion.context.LvtContext;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import dev.denwav.hypo.core.HypoContext;
+import jakarta.inject.Inject;
 
-interface LvtSuggester {
+abstract class InjectedLvtSuggester implements LvtSuggester {
 
-    default @Nullable String suggestFromMethod(final LvtContext.Method ctx) {
-        return null;
-    }
-
-    default @Nullable String suggestFromField(final LvtContext.Field ctx) {
-        return null;
-    }
+    @Inject
+    protected HypoContext hypoContext;
 }

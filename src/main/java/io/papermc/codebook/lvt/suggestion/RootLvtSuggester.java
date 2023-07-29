@@ -22,33 +22,41 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import dev.denwav.hypo.core.HypoContext;
 import io.papermc.codebook.lvt.suggestion.context.LvtContext.Field;
 import io.papermc.codebook.lvt.suggestion.context.LvtContext.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public final class RootLvtSuggester extends LvtSuggester {
+public final class RootLvtSuggester extends AbstractModule implements LvtSuggester {
 
-    private static final List<Function<HypoContext, LvtSuggester>> SUGGESTERS = List.of(GenericSuggester::new);
+    private static final List<Class<? extends LvtSuggester>> SUGGESTERS = List.of(GenericSuggester.class);
 
+    private final HypoContext hypoContext;
     public final Map<String, AtomicInteger> missedNameSuggestions;
-    private final List<LvtSuggester> delegates;
+    private final List<? extends LvtSuggester> suggesters;
 
     public RootLvtSuggester(final HypoContext hypoContext, final Map<String, AtomicInteger> missedNameSuggestions) {
-        super(hypoContext);
+        this.hypoContext = hypoContext;
         this.missedNameSuggestions = missedNameSuggestions;
-        this.delegates =
-                SUGGESTERS.stream().map(func -> func.apply(hypoContext)).toList();
+        final Injector injector = Guice.createInjector(this);
+        this.suggesters = SUGGESTERS.stream().map(injector::getInstance).toList();
+    }
+
+    @Override
+    protected void configure() {
+        this.bind(HypoContext.class).toInstance(this.hypoContext);
     }
 
     @Override
     public @Nullable String suggestFromMethod(final Method ctx) {
         @Nullable String suggestion;
-        for (final LvtSuggester delegate : this.delegates) {
+        for (final LvtSuggester delegate : this.suggesters) {
             suggestion = delegate.suggestFromMethod(ctx);
             if (suggestion != null) {
                 return suggestion;
@@ -64,7 +72,7 @@ public final class RootLvtSuggester extends LvtSuggester {
     @Override
     public @Nullable String suggestFromField(final Field ctx) {
         @Nullable String suggestion;
-        for (final LvtSuggester delegate : this.delegates) {
+        for (final LvtSuggester delegate : this.suggesters) {
             suggestion = delegate.suggestFromField(ctx);
             if (suggestion != null) {
                 return suggestion;
