@@ -16,15 +16,14 @@ dependencies {
     implementation(libs.bytes)
     implementation(libs.bundles.asm)
 
-    implementation(libs.lorenz)
-    implementation(libs.lorenz.proguard)
-
-    implementation(libs.lorenz.tiny)
     implementation(libs.unpick.format)
     implementation(libs.unpick.cli)
 
     implementation(platform(libs.hypo.platform))
     implementation(libs.bundles.hypo)
+
+    implementation(libs.feather.core)
+    implementation(libs.feather.gson)
 
     annotationProcessor(libs.recordBuilder.processor)
     compileOnly(libs.recordBuilder.core)

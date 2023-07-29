@@ -35,8 +35,6 @@ import io.papermc.codebook.exceptions.UserErrorException;
 import io.papermc.codebook.pages.CodeBookPage;
 import io.papermc.codebook.pages.ExtractVanillaJarPage;
 import io.papermc.codebook.pages.FixJarPage;
-import io.papermc.codebook.pages.InspectJarPage;
-import io.papermc.codebook.pages.MergeMappingsPage;
 import io.papermc.codebook.pages.RemapJarPage;
 import io.papermc.codebook.pages.RemapLvtPage;
 import io.papermc.codebook.pages.UnpickPage;
@@ -72,8 +70,6 @@ public final class CodeBook {
 
         final var book = List.of(
                 ExtractVanillaJarPage.class,
-                MergeMappingsPage.class,
-                InspectJarPage.class,
                 RemapJarPage.class,
                 FixJarPage.class,
                 UnpickPage.class,
@@ -123,6 +119,20 @@ public final class CodeBook {
             throw new LinkageError();
         }
 
+        final @Nullable Path unpickDefinitions;
+        if (this.ctx.unpickDefinitions() != null) {
+            unpickDefinitions = this.ctx.unpickDefinitions().resolveResourceFile(tempDir);
+        } else {
+            unpickDefinitions = null;
+        }
+
+        final @Nullable Path constantsJar;
+        if (this.ctx.constantsJar() != null) {
+            constantsJar = this.ctx.constantsJar().resolveResourceFile(tempDir);
+        } else {
+            constantsJar = null;
+        }
+
         return new AbstractModule() {
             @Override
             protected void configure() {
@@ -137,6 +147,18 @@ public final class CodeBook {
                 this.bind(CodeBookPage.MojangMappings.PATH_KEY).toInstance(mappingsFile);
                 this.bind(CodeBookPage.ParamMappings.PATH_KEY).toProvider(Providers.of(paramMappingsFile));
                 this.bind(CodeBookPage.RemapperJar.KEY).toInstance(remapperJars);
+
+                if (unpickDefinitions != null) {
+                    this.bind(CodeBookPage.UnpickDefinitions.KEY).toInstance(unpickDefinitions);
+                } else {
+                    this.bind(CodeBookPage.UnpickDefinitions.KEY).toProvider(Providers.of(null));
+                }
+
+                if (constantsJar != null) {
+                    this.bind(CodeBookPage.ConstantsJar.KEY).toInstance(constantsJar);
+                } else {
+                    this.bind(CodeBookPage.ConstantsJar.KEY).toProvider(Providers.of(null));
+                }
             }
         };
     }

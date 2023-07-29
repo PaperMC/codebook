@@ -9,6 +9,20 @@ plugins {
 
 repositories {
     mavenCentral()
+    maven("https://maven.parchmentmc.org") {
+        name = "ParchmentMC"
+        mavenContent {
+            releasesOnly()
+            includeGroupAndSubgroups("org.parchmentmc")
+        }
+    }
+    maven("https://maven.neoforged.net/releases") {
+        name = "NeoForged"
+        mavenContent {
+            releasesOnly()
+            includeGroupAndSubgroups("net.neoforged")
+        }
+    }
     maven("https://maven.fabricmc.net") {
         name = "FabricMC"
         mavenContent {
@@ -16,6 +30,7 @@ repositories {
             includeGroupAndSubgroups("net.fabricmc")
         }
     }
+    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
 }
 
 java {

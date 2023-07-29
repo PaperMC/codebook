@@ -36,7 +36,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class Downloader {
 
-    public static final String FABRIC_MAVEN = "https://maven.fabricmc.net/";
+    public static final String PARCHMENT_MAVEN = "https://maven.parchmentmc.org/";
+    public static final String NEO_MAVEN = "https://maven.neoforged.net/releases/";
 
     private static final HttpClient client = HttpClient.newHttpClient();
     private static final Gson gson = new Gson();

@@ -69,21 +69,22 @@ public final class Main implements Callable<Integer> {
     static final class RemapperOptions {
         @CommandLine.Option(
                 names = {"-r", "--remapper-coords"},
-                paramLabel = "<tiny-remapper-coords>",
+                paramLabel = "<art-coords>",
                 description =
-                        "The Maven coordinates for the executable tiny-remapper jar to use for the remapping process.")
+                        "The Maven coordinates for the executable AutoRenamingTool jar to use for the remapping process.")
         private @Nullable String remapperCoords;
 
         @CommandLine.Option(
                 names = {"--remapper-file"},
-                paramLabel = "<tiny-remapper-file>",
-                description = "The executable tiny-remapper jar to use for the remapping process.")
+                paramLabel = "<art-file>",
+                description = "The executable AutoRenamingTool jar to use for the remapping process.")
         private @Nullable Path remapperFile;
 
         @CommandLine.Option(
                 names = "--remapper-uri",
-                paramLabel = "<tiny-remapper-uri>",
-                description = "A download URL for the executable tiny-remapper jar to use for the remapping process.")
+                paramLabel = "<art-uri>",
+                description =
+                        "A download URL for the executable AutoRenamingTool jar to use for the remapping process.")
         private @Nullable URI remapperUri;
 
         @CommandLine.Option(
@@ -140,30 +141,61 @@ public final class Main implements Callable<Integer> {
         private @Nullable URI paramsUri;
     }
 
-    @CommandLine.ArgGroup(
-            heading =
-                    "%n%nUnpick requires a constants jar. This is optional when specifying the parameter mappings using Maven coordinates (preferred). "
-                            + "If not using Maven coordinates for parameter mappings, then this is required for unpick to run, otherwise it will be skipped.%n")
-    private @Nullable ConstantsJarOptions constantsJar;
+    @CommandLine.ArgGroup(exclusive = false)
+    private @Nullable UnpickOptions unpick;
 
-    static final class ConstantsJarOptions {
-        @CommandLine.Option(
-                names = "--constants-coords",
-                paramLabel = "<constants-coords>",
-                description = "The Maven coordinates for the constants jar to use for the unpick process.")
-        private @Nullable String constantsCoords;
+    static final class UnpickOptions {
+        @CommandLine.ArgGroup(
+                heading =
+                        "%n%nUnpick requires unpick definitions. When specifying unpick definitions, unpick constants are also required.%n",
+                multiplicity = "1")
+        private @Nullable UnpickDefinitionsOptions unpickDefinitions;
 
-        @CommandLine.Option(
-                names = {"--constants-file"},
-                paramLabel = "<constants-jar-file>",
-                description = "The constants jar to use for the unpick process.")
-        private @Nullable Path constantsFile;
+        static final class UnpickDefinitionsOptions {
+            @CommandLine.Option(
+                    names = "--unpick-coords",
+                    paramLabel = "<unpick-coords>",
+                    description = "The Maven coordinates for the unpick definitions to use for the unpick process.")
+            private @Nullable String unpickCoords;
 
-        @CommandLine.Option(
-                names = "--constants-uri",
-                paramLabel = "<constants-uri>",
-                description = "A download URL for the constants jar to use for the unpick process.")
-        private @Nullable URI constantsUri;
+            @CommandLine.Option(
+                    names = {"--unpick-file"},
+                    paramLabel = "<unpick-jar-file>",
+                    description = "The unpick definitions file to use for the unpick process.")
+            private @Nullable Path unpickFile;
+
+            @CommandLine.Option(
+                    names = "--unpick-uri",
+                    paramLabel = "<unpick-uri>",
+                    description = "A download URL for the unpick definitions to use for the unpick process.")
+            private @Nullable URI unpickUri;
+        }
+
+        @CommandLine.ArgGroup(
+                heading =
+                        "%n%nUnpick requires a constants jar.  When specifying unpick constants, unpick definitions are also required.%n",
+                multiplicity = "1")
+        private @Nullable ConstantsJarOptions constantsJar;
+
+        static final class ConstantsJarOptions {
+            @CommandLine.Option(
+                    names = "--constants-coords",
+                    paramLabel = "<constants-coords>",
+                    description = "The Maven coordinates for the constants jar to use for the unpick process.")
+            private @Nullable String constantsCoords;
+
+            @CommandLine.Option(
+                    names = {"--constants-file"},
+                    paramLabel = "<constants-jar-file>",
+                    description = "The constants jar to use for the unpick process.")
+            private @Nullable Path constantsFile;
+
+            @CommandLine.Option(
+                    names = "--constants-uri",
+                    paramLabel = "<constants-uri>",
+                    description = "A download URL for the constants jar to use for the unpick process.")
+            private @Nullable URI constantsUri;
+        }
     }
 
     @CommandLine.Option(
@@ -217,13 +249,30 @@ public final class Main implements Callable<Integer> {
     }
 
     @CommandLine.Option(
-            names = "--maven-base-url",
+            names = "--mappings-maven-base-url",
             paramLabel = "url",
-            description = "Provide a different Maven URL to resolve all Maven coordinates (params, remapper, etc). "
+            description = "Provide a different Maven URL to resolve parameter mapping Maven coordinates. "
                     + "It should be the base URL so the Maven artifact path can be appended to it. "
                     + "The default value when not provided is ${DEFAULT-VALUE}.",
-            defaultValue = Downloader.FABRIC_MAVEN)
-    private String mavenBaseUrl;
+            defaultValue = Downloader.PARCHMENT_MAVEN)
+    private String paramsMavenBaseUrl;
+
+    @CommandLine.Option(
+            names = "--remapper-maven-base-url",
+            paramLabel = "url",
+            description = "Provide a different Maven URL to resolve remapper Maven coordinates. "
+                    + "It should be the base URL so the Maven artifact path can be appended to it. "
+                    + "The default value when not provided is ${DEFAULT-VALUE}.",
+            defaultValue = Downloader.NEO_MAVEN)
+    private String remapperMavenBaseUrl;
+
+    @CommandLine.Option(
+            names = "--unpick-maven-base-url",
+            paramLabel = "url",
+            description = "Provide a different Maven URL to resolve unpick Maven coordinates. "
+                    + "It should be the base URL so the Maven artifact path can be appended to it. "
+                    + "There is no default value when not provided.")
+    private @Nullable String unpickMavenBaseUrl;
 
     public Main() {}
 
@@ -316,36 +365,56 @@ public final class Main implements Callable<Integer> {
         }
 
         final @Nullable CodeBookResource remapper = this.getResource(
-                "tiny-remapper.jar",
+                "AutoRenamingTool.jar",
                 this.remapper,
                 r -> r.remapperFile,
                 r -> r.remapperUri,
-                r -> new Coords(r.remapperCoords, "fat", null));
+                r -> new Coords(r.remapperCoords, "all", null, this.remapperMavenBaseUrl));
         if (remapper == null) {
             throw new UserErrorException("No remapper provided");
         }
 
         final @Nullable CodeBookResource mappings =
                 this.getResource("server_mappings.txt", this.mappings, m -> m.mappingsFile, m -> m.mappingsUri, null);
+
         final @Nullable CodeBookResource paramMappings = this.getResource(
-                "yarn_mappings.jar",
+                "parchment.zip",
                 this.paramMappings,
                 p -> p.paramsFile,
                 p -> p.paramsUri,
-                p -> new Coords(p.paramsCoords, "mergedv2", null));
+                p -> new Coords(p.paramsCoords, null, "zip", this.paramsMavenBaseUrl));
+
+        final @Nullable CodeBookResource unpickDefinitions = this.getResource(
+                "unpick_definitions.jar",
+                this.unpick != null ? this.unpick.unpickDefinitions : null,
+                d -> d.unpickFile,
+                d -> d.unpickUri,
+                d -> {
+                    if (this.unpickMavenBaseUrl == null) {
+                        throw new UserErrorException(
+                                "Cannot define unpick definitions Maven coordinates without also setting --unpick-maven-base-url");
+                    }
+                    return new Coords(d.unpickCoords, "constants", null, this.unpickMavenBaseUrl);
+                });
 
         final @Nullable CodeBookResource constantJar = this.getResource(
                 "unpick_constants.jar",
-                this.constantsJar,
+                this.unpick != null ? this.unpick.constantsJar : null,
                 c -> c.constantsFile,
                 c -> c.constantsUri,
-                c -> new Coords(c.constantsCoords, "constants", null));
+                c -> {
+                    if (this.unpickMavenBaseUrl == null) {
+                        throw new UserErrorException(
+                                "Cannot define unpick constants Maven coordinates without also setting --unpick-maven-base-url");
+                    }
+                    return new Coords(c.constantsCoords, "constants", null, this.unpickMavenBaseUrl);
+                });
 
         return CodeBookContext.builder()
-                .mavenBaseUrl(this.mavenBaseUrl)
                 .remapperJar(remapper)
                 .mappings(mappings)
                 .paramMappings(paramMappings)
+                .unpickDefinitions(unpickDefinitions)
                 .constantsJar(constantJar)
                 .outputJar(this.outputJar)
                 .overwrite(this.forceWrite)
@@ -377,15 +446,15 @@ public final class Main implements Callable<Integer> {
         if (resourceCoords != null) {
             final Coords coords = resourceCoords.apply(resource);
             if (coords.coords != null) {
-                return new CodeBookCoordsResource(
-                        coords.coords, coords.classifier, coords.extension, this.mavenBaseUrl);
+                return new CodeBookCoordsResource(coords.coords, coords.classifier, coords.extension, coords.baseUrl);
             }
         }
 
         throw new UserErrorException("No valid mappings configuration found (this is probably a bug)");
     }
 
-    private record Coords(@Nullable String coords, @Nullable String classifier, @Nullable String extension) {}
+    private record Coords(
+            @Nullable String coords, @Nullable String classifier, @Nullable String extension, String baseUrl) {}
 
     private void verifyFileExists(final String name, final Path file) {
         if (!Files.isRegularFile(file)) {

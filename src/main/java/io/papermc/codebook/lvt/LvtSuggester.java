@@ -101,7 +101,7 @@ public final class LvtSuggester {
         return determineFinalName(LvtTypeSuggester.suggestNameFromType(this.context, lvtType), scopedNames);
     }
 
-    private static String determineFinalName(final String suggestedName, final Set<String> scopedNames) {
+    public static String determineFinalName(final String suggestedName, final Set<String> scopedNames) {
         final String shortName = shortenName(suggestedName);
 
         final String name;
@@ -111,14 +111,14 @@ public final class LvtSuggester {
             name = shortName;
         }
 
-        if (!scopedNames.contains(name)) {
+        if (scopedNames.add(name)) {
             return name;
         }
 
         int counter = 1;
         while (true) {
             final String nextSuggestedName = name + counter;
-            if (!scopedNames.contains(nextSuggestedName)) {
+            if (scopedNames.add(nextSuggestedName)) {
                 return nextSuggestedName;
             }
             counter++;

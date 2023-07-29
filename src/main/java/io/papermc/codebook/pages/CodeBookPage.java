@@ -38,7 +38,6 @@ import java.lang.annotation.Target;
 import java.nio.file.Path;
 import java.util.IdentityHashMap;
 import java.util.List;
-import org.cadixdev.lorenz.MappingSet;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public abstract class CodeBookPage {
@@ -123,16 +122,22 @@ public abstract class CodeBookPage {
     @Qualifier
     @Target(ElementType.PARAMETER)
     @Retention(RetentionPolicy.RUNTIME)
-    public @interface Mappings {
-        Key<MappingSet> KEY = Key.get(MappingSet.class, Mappings.class);
+    public @interface ParamMappings {
+        Key<Path> PATH_KEY = Key.get(Path.class, ParamMappings.class);
     }
 
     @Qualifier
     @Target(ElementType.PARAMETER)
     @Retention(RetentionPolicy.RUNTIME)
-    public @interface ParamMappings {
-        Key<Path> PATH_KEY = Key.get(Path.class, ParamMappings.class);
-        Key<MappingSet> KEY = Key.get(MappingSet.class, ParamMappings.class);
+    public @interface UnpickDefinitions {
+        Key<Path> KEY = Key.get(Path.class, UnpickDefinitions.class);
+    }
+
+    @Qualifier
+    @Target(ElementType.PARAMETER)
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface ConstantsJar {
+        Key<Path> KEY = Key.get(Path.class, ConstantsJar.class);
     }
 
     @Qualifier

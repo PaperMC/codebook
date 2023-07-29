@@ -33,10 +33,10 @@ import org.jetbrains.annotations.NotNull;
 @RecordBuilder.Options(interpretNotNulls = true)
 public record CodeBookContext(
         @Nullable @org.jetbrains.annotations.Nullable Path tempDir,
-        @Nullable @org.jetbrains.annotations.Nullable String mavenBaseUrl,
         @NotNull CodeBookRemapper remapperJar,
         @Nullable @org.jetbrains.annotations.Nullable CodeBookResource mappings,
         @Nullable @org.jetbrains.annotations.Nullable CodeBookResource paramMappings,
+        @Nullable @org.jetbrains.annotations.Nullable CodeBookResource unpickDefinitions,
         @Nullable @org.jetbrains.annotations.Nullable CodeBookResource constantsJar,
         @NotNull Path outputJar,
         boolean overwrite,

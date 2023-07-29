@@ -22,6 +22,8 @@
 
 package io.papermc.codebook.pages;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmClassDataProvider;
 import dev.denwav.hypo.asm.AsmOutputWriter;
@@ -36,19 +38,26 @@ import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.lvt.LvtNamer;
 import jakarta.inject.Inject;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.cadixdev.lorenz.MappingSet;
+import org.parchmentmc.feather.io.gson.MDCGsonAdapterFactory;
+import org.parchmentmc.feather.io.gson.SimpleVersionAdapter;
+import org.parchmentmc.feather.mapping.VersionedMappingDataContainer;
+import org.parchmentmc.feather.util.SimpleVersion;
 
 public final class RemapLvtPage extends CodeBookPage {
 
     private final Path inputJar;
     private final List<Path> classpath;
-    private final MappingSet mappings;
+    private final Path paramMappings;
     private final Path tempDir;
     private final CodeBookContext context;
 
@@ -56,18 +65,33 @@ public final class RemapLvtPage extends CodeBookPage {
     public RemapLvtPage(
             @InputJar final Path inputJar,
             @ClasspathJars final List<Path> classpath,
-            @Mappings final MappingSet mappings,
+            @ParamMappings final Path paramMappings,
             @TempDir final Path tempDir,
             @Context final CodeBookContext context) {
         this.inputJar = inputJar;
         this.classpath = classpath;
-        this.mappings = mappings.reverse();
+        this.paramMappings = paramMappings;
         this.tempDir = tempDir;
         this.context = context;
     }
 
     @Override
     public void exec() {
+        final Gson gson = new GsonBuilder()
+                .registerTypeAdapterFactory(new MDCGsonAdapterFactory())
+                .registerTypeAdapter(SimpleVersion.class, new SimpleVersionAdapter())
+                .create();
+
+        final VersionedMappingDataContainer mappings;
+        try (final FileSystem fs = FileSystems.newFileSystem(this.paramMappings)) {
+            final Path jsonFile = fs.getPath("/parchment.json");
+            try (final BufferedReader reader = Files.newBufferedReader(jsonFile)) {
+                mappings = gson.fromJson(reader, VersionedMappingDataContainer.class);
+            }
+        } catch (final IOException e) {
+            throw new UnexpectedException("Failed to read param mappings file", e);
+        }
+
         final HypoContext context;
         try {
             context = this.createContext();
@@ -81,7 +105,7 @@ public final class RemapLvtPage extends CodeBookPage {
                     .register(LocalClassHydrator.create())
                     .hydrate(context);
 
-            final var lvtNamer = new LvtNamer(context, this.mappings);
+            final var lvtNamer = new LvtNamer(context, mappings);
 
             final Path result = this.remapLvtWithContext(context, lvtNamer);
             this.bind(InputJar.KEY).to(result);
@@ -94,7 +118,7 @@ public final class RemapLvtPage extends CodeBookPage {
                         .forEach(s -> System.out.println("missed: " + s.getKey() + " -- " + s.getValue() + " times"));
             }
         } catch (final Exception e) {
-            throw new UnexpectedException("Failed to fix jar", e);
+            throw new UnexpectedException("Failed to remap LVT", e);
         }
     }
 

@@ -22,10 +22,6 @@
 
 package io.papermc.codebook.lvt;
 
-import static dev.denwav.hypo.mappings.LorenzUtil.getClassMapping;
-import static dev.denwav.hypo.mappings.LorenzUtil.getMethodMapping;
-import static dev.denwav.hypo.mappings.LorenzUtil.getParameterMapping;
-
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmConstructorData;
 import dev.denwav.hypo.asm.AsmMethodData;
@@ -33,7 +29,6 @@ import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.generic.HypoHydration;
 import dev.denwav.hypo.hydrate.generic.MethodClosure;
 import dev.denwav.hypo.model.data.ClassData;
-import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.HypoKey;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
@@ -46,23 +41,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.cadixdev.lorenz.MappingSet;
-import org.cadixdev.lorenz.model.ClassMapping;
-import org.cadixdev.lorenz.model.MethodMapping;
-import org.cadixdev.lorenz.model.MethodParameterMapping;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.parchmentmc.feather.mapping.MappingDataContainer;
 
 public class LvtNamer {
 
     public static final HypoKey<Set<String>> SCOPED_NAMES = HypoKey.create("Scoped Names");
 
-    private final MappingSet mappings;
+    private final MappingDataContainer mappings;
     private final LvtSuggester lvtSuggester;
     public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
 
-    public LvtNamer(final HypoContext context, final MappingSet mappings) throws IOException {
+    public LvtNamer(final HypoContext context, final MappingDataContainer mappings) throws IOException {
         this.mappings = mappings;
         this.lvtSuggester = new LvtSuggester(context, this.missedNameSuggestions);
     }
@@ -134,10 +126,13 @@ public class LvtNamer {
             this.fillNames(outerMethod);
         }
 
-        // we only need the mappings for determining if we should skip a local variable because we have a param mapping
-        final @Nullable ClassMapping<?, ?> classMapping = getClassMapping(this.mappings, parentClass.name());
-        final @Nullable MethodMapping methodMapping =
-                getMethodMapping(classMapping, method.name(), method.descriptorText());
+        final MappingDataContainer.@Nullable MethodData methodMapping;
+        final MappingDataContainer.@Nullable ClassData classMapping = this.mappings.getClass(parentClass.name());
+        if (classMapping == null) {
+            methodMapping = null;
+        } else {
+            methodMapping = classMapping.getMethod(method.name(), method.descriptorText());
+        }
 
         // We inherit names from our outer scope, if it exists. These names will be included in our scope for any
         // potential inner scopes (other nested lambdas or local classes) that are present in this method too
@@ -149,36 +144,6 @@ public class LvtNamer {
             scopedNames = new HashSet<>();
         }
 
-        // Keep track of which parameter LVT slots do have names already
-        // These are names we won't want to override, so remember which LVT slot we used
-        // We probably aren't going to use this whole array, we just have enough slots for if we have names already for
-        // all parameters
-        // therefore `paramIndex` is the "size" of this array in terms of how many slots are actually used
-        int paramIndex = 0;
-        final int[] paramLvtsWithNames = new int[method.params().size()];
-        Arrays.fill(paramLvtsWithNames, -1);
-
-        // Keep track of method parameter mappings that are present, and add them to the current scope
-        // These are names which we can assume to be trusted
-        if (methodMapping != null) {
-            for (int i = 0; i < method.params().size(); i++) {
-                final int paramLvtIndex = toLvtIndex(i, method);
-                final @Nullable MethodParameterMapping paramMapping = getParameterMapping(methodMapping, paramLvtIndex);
-                if (paramMapping != null) {
-                    final String deobfName = paramMapping.getDeobfuscatedName();
-                    if (outerMethod != null) {
-                        // When we are in a closure we actually can't trust these names
-                        // Since other names outside of our control may have been set in the scope prior
-                        if (scopedNames.contains(deobfName)) {
-                            continue;
-                        }
-                    }
-                    paramLvtsWithNames[paramIndex++] = paramLvtIndex;
-                    scopedNames.add(deobfName);
-                }
-            }
-        }
-
         // If there's no LVT table there's nothing for us to process
         if (node.localVariables == null) {
             method.store(SCOPED_NAMES, scopedNames);
@@ -188,7 +153,7 @@ public class LvtNamer {
         // remember which of our LVTs we've already set from captured values
         // just so we don't overwrite these later
         final int[] ourCapturedLvts =
-                new int[(outerMethodParamLvtIndices == null ? 0 : outerMethodParamLvtIndices.length) + paramIndex];
+                new int[outerMethodParamLvtIndices == null ? 0 : outerMethodParamLvtIndices.length];
         Arrays.fill(ourCapturedLvts, -1);
         // -1 if nothing
         int ourCapturedLvtIndex = 0;
@@ -210,7 +175,7 @@ public class LvtNamer {
                         }
                     }
 
-                    final int ourLvtParamIndex = fromLvtIndex(ourLvtIndex, method);
+                    final int ourLvtParamIndex = fromLvtToParamIndex(ourLvtIndex, method);
                     // Also update the parameters table if this LVT slot is a parameter
                     if (ourLvtParamIndex != -1
                             && node.parameters != null
@@ -218,16 +183,6 @@ public class LvtNamer {
                         node.parameters.get(ourLvtParamIndex).name = outerLvt.name;
                     }
                 }
-            }
-        }
-
-        // Consider parameters we already have names for as "captured".
-        // Capture in this context just means we've already captured a name for a variable and should therefore leave it
-        // alone
-        for (int i = 0; i < paramIndex; i++) {
-            // Safeguard to prevent us from marking a captured LVT twice
-            if (find(ourCapturedLvts, paramLvtsWithNames[i]) == -1) {
-                ourCapturedLvts[ourCapturedLvtIndex++] = paramLvtsWithNames[i];
             }
         }
 
@@ -255,16 +210,11 @@ public class LvtNamer {
 
         outer:
         for (final LocalVariableNode lvt : node.localVariables) {
-            if (lvt.name.equals("this")) {
-                continue;
-            }
-
-            final int paramIndexFromLvt = fromLvtIndex(lvt.index, method);
-            if (paramIndexFromLvt != -1) {
-                // Don't touch record constructor parameter names
-                if (parentClass.kind() == ClassKind.RECORD && method.name().equals("<init>")) {
-                    continue;
+            if (lvt.index == 0 && !method.isStatic()) {
+                if (!"this".equals(lvt.name)) {
+                    lvt.name = "this";
                 }
+                continue;
             }
 
             if (ourCapturedLvtIndex != -1) {
@@ -282,14 +232,32 @@ public class LvtNamer {
                 }
             }
 
-            final var suggestedName = this.lvtSuggester.suggestName(node, lvt, scopedNames);
-            lvt.name = suggestedName;
+            @Nullable String mappedName = null;
+            if (methodMapping != null) {
+                final MappingDataContainer.@Nullable ParameterData paramMapping =
+                        methodMapping.getParameter((byte) lvt.index);
+                if (paramMapping != null) {
+                    final @Nullable String paramName = paramMapping.getName();
+                    if (paramName != null) {
+                        mappedName = LvtSuggester.determineFinalName(paramName, scopedNames);
+                    }
+                }
+            }
+
+            final String selectedName;
+            if (mappedName != null) {
+                selectedName = mappedName;
+            } else {
+                selectedName = this.lvtSuggester.suggestName(node, lvt, scopedNames);
+            }
+
+            lvt.name = selectedName;
             usedNames[usedNameIndex++] = new UsedLvtName(lvt.name, lvt.desc, lvt.index);
-            scopedNames.add(suggestedName);
 
             // Also update the parameters table if this LVT slot is a parameter
+            final int paramIndexFromLvt = fromLvtToParamIndex(lvt.index, method);
             if (paramIndexFromLvt != -1 && node.parameters != null && node.parameters.size() > paramIndexFromLvt) {
-                node.parameters.get(paramIndexFromLvt).name = suggestedName;
+                node.parameters.get(paramIndexFromLvt).name = selectedName;
             }
         }
 
@@ -312,32 +280,15 @@ public class LvtNamer {
     }
 
     /*
-     * Transform the given parameter index into an LVT index.
-     */
-    private static int toLvtIndex(final int index, final MethodData method) {
-        return _getLvtIndex(index, method, false);
-    }
-
-    /*
      * Transform the given LVT index into a parameter index.
      */
-    private static int fromLvtIndex(final int lvtIndex, final MethodData method) {
-        return _getLvtIndex(lvtIndex, method, true);
-    }
-
-    private static int _getLvtIndex(final int lvtIndex, final MethodData method, final boolean findParam) {
+    private static int fromLvtToParamIndex(final int lvtIndex, final MethodData method) {
         int currentIndex = 0;
         int currentLvtIndex = method.isStatic() ? 0 : 1;
 
         for (final JvmType param : method.params()) {
-            if (findParam) {
-                if (currentLvtIndex == lvtIndex) {
-                    return currentIndex;
-                }
-            } else {
-                if (currentIndex == lvtIndex) {
-                    return currentLvtIndex;
-                }
+            if (currentLvtIndex == lvtIndex) {
+                return currentIndex;
             }
 
             currentIndex++;

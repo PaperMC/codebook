@@ -6,6 +6,7 @@ slf4j = "2.0.7"
 lorenz = "0.5.7"
 unpick = "2.3.0"
 asm = "9.5"
+feather = "1.1.0"
 recordBuilder = "37"
 
 junit = "5.10.0"
@@ -37,20 +38,18 @@ asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
 asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
 
-lorenz = { module = "org.cadixdev:lorenz", version.ref = "lorenz" }
-lorenz-proguard = { module = "org.cadixdev:lorenz-io-proguard", version.ref = "lorenz" }
-
-lorenz-tiny = "net.fabricmc:lorenz-tiny:4.0.0"
 unpick-format = { module = "net.fabricmc.unpick:unpick-format-utils", version.ref = "unpick" }
 unpick-cli = { module = "net.fabricmc.unpick:unpick-cli", version.ref = "unpick" }
 
-hypo-platform = "dev.denwav.hypo:hypo-platform:1.2.7"
+hypo-platform = "dev.denwav.hypo:hypo-platform:2.0.0-SNAPSHOT"
 hypo-model = { module = "dev.denwav.hypo:hypo-model" }
 hypo-core = { module = "dev.denwav.hypo:hypo-core" }
 hypo-asm = { module = "dev.denwav.hypo:hypo-asm" }
 hypo-hydrate = { module = "dev.denwav.hypo:hypo-hydrate" }
 hypo-asm-hydrate = { module = "dev.denwav.hypo:hypo-asm-hydrate" }
-hypo-mappings = { module = "dev.denwav.hypo:hypo-mappings" }
+
+feather-core = { module = "org.parchmentmc:feather", version.ref = "feather" }
+feather-gson = { module = "org.parchmentmc.feather:io-gson", version.ref = "feather" }
 
 recordBuilder-processor = { module = "io.soabase.record-builder:record-builder-processor", version.ref = "recordBuilder" }
 recordBuilder-core = { module = "io.soabase.record-builder:record-builder-core", version.ref = "recordBuilder" }
@@ -64,4 +63,4 @@ mockito-junit = { module = "org.mockito:mockito-junit-jupiter", version.ref = "m
 
 [bundles]
 asm = ["asm", "asm-util", "asm-tree"]
-hypo = ["hypo-model", "hypo-core", "hypo-asm", "hypo-hydrate", "hypo-asm-hydrate", "hypo-mappings"]
+hypo = ["hypo-model", "hypo-core", "hypo-asm", "hypo-hydrate", "hypo-asm-hydrate"]

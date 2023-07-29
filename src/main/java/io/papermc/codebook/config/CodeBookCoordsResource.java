@@ -77,7 +77,7 @@ public record CodeBookCoordsResource(
             sb.append(':').append(this.classifier);
         }
         if (this.extension != null) {
-            sb.append(':').append(this.extension);
+            sb.append('@').append(this.extension);
         }
         return sb.toString();
     }
