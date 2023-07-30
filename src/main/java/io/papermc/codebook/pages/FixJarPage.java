@@ -26,17 +26,11 @@ import static java.util.Objects.requireNonNullElse;
 
 import com.google.common.collect.Iterables;
 import dev.denwav.hypo.asm.AsmClassData;
-import dev.denwav.hypo.asm.AsmClassDataProvider;
 import dev.denwav.hypo.asm.AsmConstructorData;
 import dev.denwav.hypo.asm.AsmFieldData;
 import dev.denwav.hypo.asm.AsmMethodData;
-import dev.denwav.hypo.asm.AsmOutputWriter;
-import dev.denwav.hypo.asm.hydrate.BridgeMethodHydrator;
 import dev.denwav.hypo.core.HypoContext;
-import dev.denwav.hypo.hydrate.HydrationManager;
 import dev.denwav.hypo.hydrate.generic.HypoHydration;
-import dev.denwav.hypo.model.ClassProviderRoot;
-import dev.denwav.hypo.model.HypoModelUtil;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.FieldData;
@@ -45,9 +39,10 @@ import dev.denwav.hypo.model.data.Visibility;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AnnotationNode;
@@ -56,58 +51,40 @@ import org.objectweb.asm.tree.MethodNode;
 
 public final class FixJarPage extends CodeBookPage {
 
-    private final Path inputJar;
-    private final List<Path> classpath;
-    private final Path tempDir;
+    private final HypoContext context;
 
     @Inject
-    public FixJarPage(
-            @InputJar final Path inputJar, @ClasspathJars final List<Path> classpath, @TempDir final Path tempDir) {
-        this.inputJar = inputJar;
-        this.classpath = classpath;
-        this.tempDir = tempDir;
+    public FixJarPage(@Hypo final HypoContext context) {
+        this.context = context;
     }
 
     @Override
     public void exec() {
-        final HypoContext context;
         try {
-            context = this.createContext();
+            this.fixJar();
         } catch (final IOException e) {
-            throw new UnexpectedException("Failed to create context for bytecode analysis", e);
-        }
-
-        try (context) {
-            HydrationManager.createDefault()
-                    .register(BridgeMethodHydrator.create())
-                    .hydrate(context);
-
-            final Path result = this.fixWithContext(context);
-            this.bind(InputJar.KEY).to(result);
-        } catch (final Exception e) {
             throw new UnexpectedException("Failed to fix jar", e);
         }
     }
 
-    private HypoContext createContext() throws IOException {
-        return HypoContext.builder()
-                .withProvider(AsmClassDataProvider.of(ClassProviderRoot.fromJar(this.inputJar)))
-                .withContextProvider(AsmClassDataProvider.of(this.classpath.stream()
-                        .map(HypoModelUtil.wrapFunction(ClassProviderRoot::fromJar))
-                        .toList()))
-                .withContextProvider(AsmClassDataProvider.of(ClassProviderRoot.ofJdk()))
-                .build();
-    }
-
-    private Path fixWithContext(final HypoContext context) throws IOException {
-        for (final ClassData classData : context.getProvider().allClasses()) {
-            this.processClass((AsmClassData) classData);
+    private void fixJar() throws IOException {
+        final var tasks = new ArrayList<Future<?>>();
+        for (final ClassData classData : this.context.getProvider().allClasses()) {
+            final var task = this.context.getExecutor().submit(() -> {
+                this.processClass((AsmClassData) classData);
+            });
+            tasks.add(task);
         }
 
-        final Path fixedJar = this.tempDir.resolve("fixed.jar");
-        AsmOutputWriter.to(fixedJar).write(context);
-
-        return fixedJar;
+        try {
+            for (final Future<?> task : tasks) {
+                task.get();
+            }
+        } catch (final ExecutionException e) {
+            throw new UnexpectedException("Failed to fix jar", e.getCause());
+        } catch (final InterruptedException e) {
+            throw new UnexpectedException("Jar fixing interrupted", e);
+        }
     }
 
     private void processClass(final AsmClassData classData) {

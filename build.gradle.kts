@@ -22,6 +22,8 @@ dependencies {
     implementation(platform(libs.hypo.platform))
     implementation(libs.bundles.hypo)
 
+    implementation(libs.lorenz)
+
     implementation(libs.feather.core)
     implementation(libs.feather.gson)
 

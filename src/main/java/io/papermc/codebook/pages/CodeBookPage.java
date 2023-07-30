@@ -29,6 +29,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.util.Modules;
 import com.google.inject.util.Providers;
+import dev.denwav.hypo.core.HypoContext;
 import io.papermc.codebook.config.CodeBookContext;
 import jakarta.inject.Qualifier;
 import java.lang.annotation.ElementType;
@@ -38,6 +39,7 @@ import java.lang.annotation.Target;
 import java.nio.file.Path;
 import java.util.IdentityHashMap;
 import java.util.List;
+import org.cadixdev.lorenz.MappingSet;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public abstract class CodeBookPage {
@@ -124,6 +126,7 @@ public abstract class CodeBookPage {
     @Retention(RetentionPolicy.RUNTIME)
     public @interface ParamMappings {
         Key<Path> PATH_KEY = Key.get(Path.class, ParamMappings.class);
+        Key<MappingSet> KEY = Key.get(MappingSet.class, ParamMappings.class);
     }
 
     @Qualifier
@@ -145,5 +148,12 @@ public abstract class CodeBookPage {
     @Retention(RetentionPolicy.RUNTIME)
     public @interface TempDir {
         Key<Path> KEY = Key.get(Path.class, TempDir.class);
+    }
+
+    @Qualifier
+    @Target(ElementType.PARAMETER)
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Hypo {
+        Key<HypoContext> KEY = Key.get(HypoContext.class, Hypo.class);
     }
 }

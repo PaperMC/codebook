@@ -41,12 +41,15 @@ asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
 unpick-format = { module = "net.fabricmc.unpick:unpick-format-utils", version.ref = "unpick" }
 unpick-cli = { module = "net.fabricmc.unpick:unpick-cli", version.ref = "unpick" }
 
-hypo-platform = "dev.denwav.hypo:hypo-platform:2.0.0"
+hypo-platform = "dev.denwav.hypo:hypo-platform:2.1.0"
 hypo-model = { module = "dev.denwav.hypo:hypo-model" }
 hypo-core = { module = "dev.denwav.hypo:hypo-core" }
 hypo-asm = { module = "dev.denwav.hypo:hypo-asm" }
 hypo-hydrate = { module = "dev.denwav.hypo:hypo-hydrate" }
 hypo-asm-hydrate = { module = "dev.denwav.hypo:hypo-asm-hydrate" }
+hypo-mappings = { module = "dev.denwav.hypo:hypo-mappings" }
+
+lorenz = "org.cadixdev:lorenz:0.5.8"
 
 feather-core = { module = "org.parchmentmc:feather", version.ref = "feather" }
 feather-gson = { module = "org.parchmentmc.feather:io-gson", version.ref = "feather" }
@@ -63,4 +66,4 @@ mockito-junit = { module = "org.mockito:mockito-junit-jupiter", version.ref = "m
 
 [bundles]
 asm = ["asm", "asm-util", "asm-tree"]
-hypo = ["hypo-model", "hypo-core", "hypo-asm", "hypo-hydrate", "hypo-asm-hydrate"]
+hypo = ["hypo-model", "hypo-core", "hypo-asm", "hypo-hydrate", "hypo-asm-hydrate", "hypo-mappings"]

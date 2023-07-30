@@ -22,125 +22,80 @@
 
 package io.papermc.codebook.pages;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import dev.denwav.hypo.asm.AsmClassData;
-import dev.denwav.hypo.asm.AsmClassDataProvider;
-import dev.denwav.hypo.asm.AsmOutputWriter;
-import dev.denwav.hypo.asm.hydrate.LambdaCallHydrator;
-import dev.denwav.hypo.asm.hydrate.LocalClassHydrator;
 import dev.denwav.hypo.core.HypoContext;
-import dev.denwav.hypo.hydrate.HydrationManager;
-import dev.denwav.hypo.model.ClassProviderRoot;
 import dev.denwav.hypo.model.HypoModelUtil;
 import dev.denwav.hypo.model.data.ClassData;
 import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.lvt.LvtNamer;
 import jakarta.inject.Inject;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.parchmentmc.feather.io.gson.MDCGsonAdapterFactory;
-import org.parchmentmc.feather.io.gson.SimpleVersionAdapter;
-import org.parchmentmc.feather.mapping.VersionedMappingDataContainer;
-import org.parchmentmc.feather.util.SimpleVersion;
+import org.cadixdev.lorenz.MappingSet;
 
 public final class RemapLvtPage extends CodeBookPage {
 
-    private final Path inputJar;
-    private final List<Path> classpath;
-    private final Path paramMappings;
-    private final Path tempDir;
-    private final CodeBookContext context;
+    private final HypoContext context;
+    private final MappingSet paramMappings;
+    private final boolean logMissingLvtSuggestions;
 
     @Inject
     public RemapLvtPage(
-            @InputJar final Path inputJar,
-            @ClasspathJars final List<Path> classpath,
-            @ParamMappings final Path paramMappings,
-            @TempDir final Path tempDir,
+            @Hypo final HypoContext hypoContext,
+            @ParamMappings final MappingSet paramMappings,
             @Context final CodeBookContext context) {
-        this.inputJar = inputJar;
-        this.classpath = classpath;
+        this.context = hypoContext;
         this.paramMappings = paramMappings;
-        this.tempDir = tempDir;
-        this.context = context;
+        this.logMissingLvtSuggestions = context.logMissingLvtSuggestions();
     }
 
     @Override
     public void exec() {
-        final Gson gson = new GsonBuilder()
-                .registerTypeAdapterFactory(new MDCGsonAdapterFactory())
-                .registerTypeAdapter(SimpleVersion.class, new SimpleVersionAdapter())
-                .create();
-
-        final VersionedMappingDataContainer mappings;
-        try (final FileSystem fs = FileSystems.newFileSystem(this.paramMappings)) {
-            final Path jsonFile = fs.getPath("/parchment.json");
-            try (final BufferedReader reader = Files.newBufferedReader(jsonFile)) {
-                mappings = gson.fromJson(reader, VersionedMappingDataContainer.class);
-            }
-        } catch (final IOException e) {
-            throw new UnexpectedException("Failed to read param mappings file", e);
-        }
-
-        final HypoContext context;
+        final LvtNamer lvtNamer;
         try {
-            context = this.createContext();
+            lvtNamer = new LvtNamer(this.context, this.paramMappings);
         } catch (final IOException e) {
-            throw new UnexpectedException("Failed to create context for bytecode analysis", e);
+            throw new UnexpectedException("Failed to create LVT namer", e);
         }
 
-        try (context) {
-            HydrationManager.createDefault()
-                    .register(LambdaCallHydrator.create())
-                    .register(LocalClassHydrator.create())
-                    .hydrate(context);
+        this.remapLvt(lvtNamer);
 
-            final var lvtNamer = new LvtNamer(context, mappings);
+        if (this.logMissingLvtSuggestions) {
+            final var comparator = Comparator.<Map.Entry<String, AtomicInteger>, Integer>comparing(
+                    e -> e.getValue().get());
+            lvtNamer.missedNameSuggestions.entrySet().stream()
+                    .sorted(comparator.reversed())
+                    .forEach(s -> System.out.println("missed: " + s.getKey() + " -- " + s.getValue() + " times"));
+        }
+    }
 
-            final Path result = this.remapLvtWithContext(context, lvtNamer);
-            this.bind(InputJar.KEY).to(result);
+    private void remapLvt(final LvtNamer lvtNamer) {
+        final ArrayList<Future<?>> tasks = new ArrayList<>();
+        for (final ClassData classData : this.context.getProvider().allClasses()) {
+            final var task = this.context.getExecutor().submit(() -> {
+                try {
+                    lvtNamer.processClass((AsmClassData) classData);
+                } catch (final Exception e) {
+                    throw HypoModelUtil.rethrow(e);
+                }
+            });
+            tasks.add(task);
+        }
 
-            if (this.context.logMissingLvtSuggestions()) {
-                final var comparator = Comparator.<Map.Entry<String, AtomicInteger>, Integer>comparing(
-                        e -> e.getValue().get());
-                lvtNamer.missedNameSuggestions.entrySet().stream()
-                        .sorted(comparator.reversed())
-                        .forEach(s -> System.out.println("missed: " + s.getKey() + " -- " + s.getValue() + " times"));
+        try {
+            for (final Future<?> task : tasks) {
+                task.get();
             }
-        } catch (final Exception e) {
-            throw new UnexpectedException("Failed to remap LVT", e);
+        } catch (final ExecutionException e) {
+            throw new UnexpectedException("Failed to remap LVT", e.getCause());
+        } catch (final InterruptedException e) {
+            throw new UnexpectedException("LVT remap interrupted", e);
         }
-    }
-
-    private HypoContext createContext() throws IOException {
-        return HypoContext.builder()
-                .withProvider(AsmClassDataProvider.of(ClassProviderRoot.fromJar(this.inputJar)))
-                .withContextProvider(AsmClassDataProvider.of(this.classpath.stream()
-                        .map(HypoModelUtil.wrapFunction(ClassProviderRoot::fromJar))
-                        .toList()))
-                .withContextProvider(AsmClassDataProvider.of(ClassProviderRoot.ofJdk()))
-                .build();
-    }
-
-    private Path remapLvtWithContext(final HypoContext context, final LvtNamer lvtNamer) throws IOException {
-        for (final ClassData classData : context.getProvider().allClasses()) {
-            lvtNamer.processClass((AsmClassData) classData);
-        }
-
-        final Path lvtRemapped = this.tempDir.resolve("lvtRemapped.jar");
-        AsmOutputWriter.to(lvtRemapped).write(context);
-
-        this.bind(InputJar.KEY).to(lvtRemapped);
-        return lvtRemapped;
     }
 }

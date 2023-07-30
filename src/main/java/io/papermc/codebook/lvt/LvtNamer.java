@@ -29,8 +29,6 @@ import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.generic.HypoHydration;
 import dev.denwav.hypo.hydrate.generic.MethodClosure;
 import dev.denwav.hypo.model.data.ClassData;
-import dev.denwav.hypo.model.data.ClassKind;
-import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.HypoKey;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
@@ -40,25 +38,29 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.cadixdev.lorenz.MappingSet;
+import org.cadixdev.lorenz.model.Mapping;
+import org.cadixdev.lorenz.model.MethodMapping;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.ParameterNode;
-import org.parchmentmc.feather.mapping.MappingDataContainer;
 
 public class LvtNamer {
 
     public static final HypoKey<Set<String>> SCOPED_NAMES = HypoKey.create("Scoped Names");
 
-    private final MappingDataContainer mappings;
     private final HypoContext context;
+    private final MappingSet mappings;
     private final LvtSuggester lvtSuggester;
+
     public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
 
-    public LvtNamer(final HypoContext context, final MappingDataContainer mappings) throws IOException {
+    public LvtNamer(final HypoContext context, final MappingSet mappings) throws IOException {
         this.mappings = mappings;
         this.context = context;
         this.lvtSuggester = new LvtSuggester(context, this.missedNameSuggestions);
@@ -74,6 +76,10 @@ public class LvtNamer {
         final @Nullable Set<String> names = method.get(SCOPED_NAMES);
         if (names != null) {
             // If scoped names is already filled out, this method has already been visited
+            // We don't need to be concerned with a single thread being processed by multiple threads,
+            // it can happen, but that will simply result in the same output, which is still consistent.
+            // This is fast enough that a little bit of duplicate work is acceptable, not worth trying
+            // to prevent it.
             return;
         }
 
@@ -131,13 +137,9 @@ public class LvtNamer {
             this.fillNames(outerMethod);
         }
 
-        final MappingDataContainer.@Nullable MethodData methodMapping;
-        final MappingDataContainer.@Nullable ClassData classMapping = this.mappings.getClass(parentClass.name());
-        if (classMapping == null) {
-            methodMapping = null;
-        } else {
-            methodMapping = classMapping.getMethod(method.name(), method.descriptorText());
-        }
+        final Optional<MethodMapping> methodMapping = this.mappings
+                .getClassMapping(parentClass.name())
+                .flatMap(c -> c.getMethodMapping(method.name(), method.descriptorText()));
 
         // We inherit names from our outer scope, if it exists. These names will be included in our scope for any
         // potential inner scopes (other nested lambdas or local classes) that are present in this method too
@@ -162,12 +164,12 @@ public class LvtNamer {
 
             for (int i = 0; i < paramCount; i++) {
                 // always (i + 1) because abstract methods are never static
-                final MappingDataContainer.@Nullable ParameterData paramMapping =
-                        methodMapping != null ? methodMapping.getParameter((byte) (i + 1)) : null;
-                @Nullable String paramName = null;
-                if (paramMapping != null) {
-                    paramName = paramMapping.getName();
-                }
+                final int fi = i;
+                @Nullable
+                String paramName = methodMapping
+                        .flatMap(m -> m.getParameterMapping(fi + 1))
+                        .map(Mapping::getDeobfuscatedName)
+                        .orElse(null);
 
                 if (paramName == null) {
                     paramName = LvtTypeSuggester.suggestNameFromType(this.context, paramTypes.get(i));
@@ -267,31 +269,18 @@ public class LvtNamer {
                 }
             }
 
+            final @Nullable String paramName = methodMapping
+                    .flatMap(m -> m.getParameterMapping(lvt.index))
+                    .map(Mapping::getDeobfuscatedName)
+                    .orElse(null);
+
             @Nullable String mappedName = null;
-            if (methodMapping != null) {
-                final MappingDataContainer.@Nullable ParameterData paramMapping =
-                        methodMapping.getParameter((byte) lvt.index);
-                if (paramMapping != null) {
-                    final @Nullable String paramName = paramMapping.getName();
-                    if (paramName != null) {
-                        mappedName = LvtSuggester.determineFinalName(paramName, scopedNames);
-                    }
-                }
+            if (paramName != null) {
+                mappedName = LvtSuggester.determineFinalName(paramName, scopedNames);
             }
 
-            final String selectedName;
-            if (mappedName != null) {
-                selectedName = mappedName;
-            } else {
-                @Nullable String name = null;
-                if (parentClass.kind() == ClassKind.RECORD && method.name().equals("<init>")) {
-                    name = this.remapRecordParameter(lvt, method);
-                }
-                if (name == null) {
-                    name = this.lvtSuggester.suggestName(node, lvt, scopedNames);
-                }
-                selectedName = name;
-            }
+            final String selectedName =
+                    mappedName != null ? mappedName : this.lvtSuggester.suggestName(node, lvt, scopedNames);
 
             lvt.name = selectedName;
             usedNames[usedNameIndex++] = new UsedLvtName(lvt.name, lvt.desc, lvt.index);
@@ -307,30 +296,6 @@ public class LvtNamer {
     }
 
     private record UsedLvtName(String name, String desc, int index) {}
-
-    private @Nullable String remapRecordParameter(final LocalVariableNode lvt, final MethodData method) {
-        // use record component names for primary constructor
-        final int paramIndex = fromLvtToParamIndex(lvt.index, method);
-        if (paramIndex == -1) {
-            return null;
-        }
-        final @Nullable List<FieldData> comp = method.parentClass().recordComponents();
-        if (comp == null) {
-            throw new IllegalStateException("No record components found on record");
-        }
-
-        if (comp.size() != method.params().size()) {
-            return null;
-        } else {
-            for (int i = 0; i < comp.size(); i++) {
-                if (!comp.get(i).fieldType().equals(method.param(i))) {
-                    return null;
-                }
-            }
-        }
-
-        return comp.get(paramIndex).name();
-    }
 
     private static int find(final int[] array, final int value) {
         return find(array, value, array.length);

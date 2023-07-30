@@ -27,14 +27,18 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.util.Providers;
+import dev.denwav.hypo.asm.AsmOutputWriter;
+import dev.denwav.hypo.core.HypoContext;
 import io.papermc.codebook.config.CodeBookClasspathResource;
 import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.config.CodeBookJarInput;
 import io.papermc.codebook.config.CodeBookResource;
+import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.exceptions.UserErrorException;
 import io.papermc.codebook.pages.CodeBookPage;
 import io.papermc.codebook.pages.ExtractVanillaJarPage;
 import io.papermc.codebook.pages.FixJarPage;
+import io.papermc.codebook.pages.InspectJarPage;
 import io.papermc.codebook.pages.RemapJarPage;
 import io.papermc.codebook.pages.RemapLvtPage;
 import io.papermc.codebook.pages.UnpickPage;
@@ -71,8 +75,9 @@ public final class CodeBook {
         final var book = List.of(
                 ExtractVanillaJarPage.class,
                 RemapJarPage.class,
-                FixJarPage.class,
                 UnpickPage.class,
+                InspectJarPage.class,
+                FixJarPage.class,
                 RemapLvtPage.class);
 
         Module module = this.createInitialModule(tempDir);
@@ -80,7 +85,15 @@ public final class CodeBook {
             module = injector(module).getInstance(page).exec(module);
         }
 
-        final Path resultJar = injector(module).getInstance(CodeBookPage.InputJar.KEY);
+        final HypoContext context = injector(module).getInstance(CodeBookPage.Hypo.KEY);
+        final Path resultJar;
+        try (context) {
+            resultJar = tempDir.resolve("final_output.jar");
+            AsmOutputWriter.to(resultJar).write(context);
+        } catch (final Exception e) {
+            throw new UnexpectedException("Failed to write output file", e);
+        }
+
         IOUtil.move(resultJar, this.ctx.outputJar());
     }
 
