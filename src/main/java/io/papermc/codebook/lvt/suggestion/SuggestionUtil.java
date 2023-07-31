@@ -22,23 +22,25 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
-import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
-import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
-import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
+import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class GenericSuggester implements LvtSuggester {
+final class SuggestionUtil {
 
-    @Override
-    public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
-        return switch (call.data().name()) {
-            case "hashCode" -> "hashCode";
-            case "size" -> "size";
-            case "length" -> "len";
-            case "freeze" -> "frozen";
-            case "readLine" -> "line";
-            default -> null;
-        };
+    private SuggestionUtil() {}
+
+    static @Nullable String tryMatchPrefix(final String methodName, final List<String> possiblePrefixes) {
+        // skip any exact match
+        if (possiblePrefixes.contains(methodName)) {
+            return null;
+        }
+        @Nullable String prefix = null;
+        for (final String possiblePrefix : possiblePrefixes) {
+            if (!possiblePrefix.equals(methodName) && methodName.startsWith(possiblePrefix)) {
+                prefix = possiblePrefix;
+                break;
+            }
+        }
+        return prefix;
     }
 }

@@ -22,23 +22,33 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
+import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
+import static io.papermc.codebook.lvt.suggestion.SuggestionUtil.tryMatchPrefix;
+
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
+import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class GenericSuggester implements LvtSuggester {
+/*
+This matches against methods with a set prefix and trims that prefix off of the
+returned local variable name
+ */
+public class SingleVerbSuggester implements LvtSuggester {
+
+    private static final List<String> SINGLE_VERB_PREFIXES = List.of("getOrCreate", "get", "as", "read");
 
     @Override
     public @Nullable String suggestFromMethod(
             final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
-        return switch (call.data().name()) {
-            case "hashCode" -> "hashCode";
-            case "size" -> "size";
-            case "length" -> "len";
-            case "freeze" -> "frozen";
-            case "readLine" -> "line";
-            default -> null;
-        };
+        final String methodName = call.data().name();
+
+        final @Nullable String prefix = tryMatchPrefix(methodName, SINGLE_VERB_PREFIXES);
+        if (prefix == null) {
+            return null;
+        }
+
+        return decapitalize(methodName, prefix.length());
     }
 }

@@ -22,23 +22,34 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
+import dev.denwav.hypo.model.data.ClassKind;
+import dev.denwav.hypo.model.data.FieldData;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
+import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class GenericSuggester implements LvtSuggester {
+public class RecordComponentSuggester implements LvtSuggester {
 
     @Override
     public @Nullable String suggestFromMethod(
             final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
-        return switch (call.data().name()) {
-            case "hashCode" -> "hashCode";
-            case "size" -> "size";
-            case "length" -> "len";
-            case "freeze" -> "frozen";
-            case "readLine" -> "line";
-            default -> null;
-        };
+        if (insn.owner().is(ClassKind.RECORD)) {
+            return null;
+        }
+        final @Nullable List<FieldData> components = insn.owner().recordComponents();
+        if (components == null) {
+            return null;
+        }
+
+        final String methodName = call.data().name();
+        for (final FieldData component : components) {
+            if (component.name().equals(methodName)) {
+                return methodName;
+            }
+        }
+
+        return null;
     }
 }

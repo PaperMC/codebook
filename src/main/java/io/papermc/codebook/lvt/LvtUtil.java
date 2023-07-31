@@ -70,4 +70,16 @@ public final class LvtUtil {
         }
         return nextWord.toString();
     }
+
+    public static boolean isStringAllUppercase(final String input) {
+        for (int i = 0; i < input.length(); i++) {
+            final char ch = input.charAt(i);
+            if (Character.isAlphabetic(ch)) {
+                if (!Character.isUpperCase(ch)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }

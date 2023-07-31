@@ -32,9 +32,15 @@ import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.ClassDataProvider;
+import dev.denwav.hypo.model.HypoModelUtil;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.MethodDescriptor;
+import dev.denwav.hypo.model.data.types.ClassType;
+import dev.denwav.hypo.model.data.types.JvmType;
+import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.io.IOException;
 import java.util.HashMap;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -52,10 +58,10 @@ import org.objectweb.asm.tree.MethodInsnNode;
 @ExtendWith(MockitoExtension.class)
 class LvtAssignmentSuggesterTest {
 
-    private static final String RANDOM_SOURCE_NAME = "net/minecraft/util/RandomSource";
+    static final JvmType RANDOM_SOURCE_TYPE = new ClassType("net/minecraft/util/RandomSource");
 
     private static final MockSettings LENIENT = withSettings().strictness(Strictness.LENIENT);
-    private LvtAssignmentSuggester suggester;
+    private RootLvtSuggester suggester;
 
     @Mock(strictness = Mock.Strictness.LENIENT)
     private ClassData randomSourceClass;
@@ -66,11 +72,11 @@ class LvtAssignmentSuggesterTest {
         final HypoContext context =
                 HypoContext.builder().withContextProviders(provider).build();
 
-        when(provider.findClass(RANDOM_SOURCE_NAME)).thenReturn(this.randomSourceClass);
+        when(provider.findClass(RANDOM_SOURCE_TYPE.asInternalName())).thenReturn(this.randomSourceClass);
 
-        when(this.randomSourceClass.name()).thenReturn(RANDOM_SOURCE_NAME);
+        when(this.randomSourceClass.name()).thenReturn(RANDOM_SOURCE_TYPE.asInternalName());
 
-        this.suggester = new LvtAssignmentSuggester(context, new HashMap<>());
+        this.suggester = new RootLvtSuggester(context, new HashMap<>());
     }
 
     @ParameterizedTest
@@ -81,6 +87,7 @@ class LvtAssignmentSuggesterTest {
 
         final AsmClassData owner = mock(LENIENT);
         final AsmMethodData method = mock(LENIENT);
+        final ContainerContext context = mock(LENIENT);
 
         when(owner.kind()).thenReturn(ClassKind.CLASS);
         when(owner.name()).thenReturn(methodOwner);
@@ -94,7 +101,7 @@ class LvtAssignmentSuggesterTest {
         when(method.param(anyInt())).thenCallRealMethod();
         when(method.returnType()).thenCallRealMethod();
 
-        if (methodOwner.equals(RANDOM_SOURCE_NAME)) {
+        if (methodOwner.equals(HypoModelUtil.normalizedClassName(RANDOM_SOURCE_TYPE.asInternalName()))) {
             when(owner.doesExtendOrImplement(this.randomSourceClass)).thenReturn(true);
         } else {
             when(owner.doesExtendOrImplement(this.randomSourceClass)).thenReturn(false);
@@ -102,7 +109,8 @@ class LvtAssignmentSuggesterTest {
 
         final MethodInsnNode insn =
                 new MethodInsnNode(Opcodes.INVOKEVIRTUAL, methodOwner, methodName, methodDescriptor);
-        final @Nullable String result = this.suggester.suggestNameFromAssignment(owner, method, insn);
+        final @Nullable String result = this.suggester.suggestFromMethod(
+                MethodCallContext.create(method), MethodInsnContext.create(owner, insn), context);
 
         assertEquals(expectedName, result);
     }

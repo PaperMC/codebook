@@ -55,8 +55,7 @@ public class RandomSourceSuggester implements LvtSuggester {
 
     @Override
     public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
-            throws IOException {
+            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
         final String methodName = call.data().name();
         ClassData ownerClass = insn.owner();
         if (ownerClass.doesExtendOrImplement(this.randomSourceClass)) {

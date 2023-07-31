@@ -25,18 +25,32 @@ package io.papermc.codebook.lvt;
 import static dev.denwav.hypo.model.data.MethodDescriptor.parseDescriptor;
 import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
-import dev.denwav.hypo.asm.AsmClassData;
-import dev.denwav.hypo.asm.AsmMethodData;
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.MethodDescriptor;
 import dev.denwav.hypo.model.data.types.JvmType;
-import io.papermc.codebook.lvt.suggestion.RootLvtSuggester;
+import io.papermc.codebook.lvt.suggestion.GenericSuggester;
+import io.papermc.codebook.lvt.suggestion.LvtSuggester;
+import io.papermc.codebook.lvt.suggestion.MathSuggester;
+import io.papermc.codebook.lvt.suggestion.NewPrefixSuggester;
+import io.papermc.codebook.lvt.suggestion.RecordComponentSuggester;
+import io.papermc.codebook.lvt.suggestion.SingleVerbBooleanSuggester;
+import io.papermc.codebook.lvt.suggestion.SingleVerbSuggester;
+import io.papermc.codebook.lvt.suggestion.StringSuggester;
+import io.papermc.codebook.lvt.suggestion.VerbPrefixBooleanSuggester;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.field.FieldCallContext;
+import io.papermc.codebook.lvt.suggestion.context.field.FieldInsnContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
+import io.papermc.codebook.lvt.suggestion.numbers.MthRandomSuggester;
+import io.papermc.codebook.lvt.suggestion.numbers.RandomSourceSuggester;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -48,17 +62,37 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
-public final class LvtSuggester {
+public final class RootLvtSuggester extends AbstractModule implements LvtSuggester {
 
-    private final HypoContext context;
-    private final LvtAssignmentSuggester assignmentSuggester;
-    private final RootLvtSuggester rootLvtSuggester;
+    // the order of these is somewhat important. Generally, owning-class-specific suggesters
+    // should be first, like RandomSource or Mth. Then more general suggesters that only check
+    // the method name should follow.
+    private static final List<Class<? extends LvtSuggester>> SUGGESTERS = List.of(
+            RandomSourceSuggester.class,
+            MthRandomSuggester.class,
+            MathSuggester.class,
+            StringSuggester.class,
+            NewPrefixSuggester.class,
+            SingleVerbSuggester.class,
+            VerbPrefixBooleanSuggester.class,
+            SingleVerbBooleanSuggester.class,
+            RecordComponentSuggester.class,
+            GenericSuggester.class);
 
-    public LvtSuggester(final HypoContext context, final Map<String, AtomicInteger> missedNameSuggestions)
-            throws IOException {
-        this.context = context;
-        this.assignmentSuggester = new LvtAssignmentSuggester(context, missedNameSuggestions);
-        this.rootLvtSuggester = new RootLvtSuggester(context, missedNameSuggestions);
+    private final HypoContext hypoContext;
+    public final Map<String, AtomicInteger> missedNameSuggestions;
+    private final List<? extends LvtSuggester> suggesters;
+
+    public RootLvtSuggester(final HypoContext hypoContext, final Map<String, AtomicInteger> missedNameSuggestions) {
+        this.hypoContext = hypoContext;
+        this.missedNameSuggestions = missedNameSuggestions;
+        final Injector injector = Guice.createInjector(this);
+        this.suggesters = SUGGESTERS.stream().map(injector::getInstance).toList();
+    }
+
+    @Override
+    protected void configure() {
+        this.bind(HypoContext.class).toInstance(this.hypoContext);
     }
 
     public String suggestName(
@@ -105,7 +139,7 @@ public final class LvtSuggester {
 
         // we couldn't determine a name from the assignment, so determine a name from the type
         final JvmType lvtType = toJvmType(lvt.desc);
-        return determineFinalName(LvtTypeSuggester.suggestNameFromType(this.context, lvtType), scopedNames);
+        return determineFinalName(LvtTypeSuggester.suggestNameFromType(this.hypoContext, lvtType), scopedNames);
     }
 
     public static String determineFinalName(final String suggestedName, final Set<String> scopedNames) {
@@ -140,7 +174,7 @@ public final class LvtSuggester {
 
         final MethodInsnNode methodInsnNode = (MethodInsnNode) prev;
 
-        final @Nullable ClassData owner = this.context.getContextProvider().findClass(methodInsnNode.owner);
+        final @Nullable ClassData owner = this.hypoContext.getContextProvider().findClass(methodInsnNode.owner);
         if (owner == null) {
             return null;
         }
@@ -150,15 +184,43 @@ public final class LvtSuggester {
             return null;
         }
 
-        final @Nullable String suggestion = this.rootLvtSuggester.suggestFromMethod(
+        return this.suggestFromMethod(
                 MethodCallContext.create(method),
                 MethodInsnContext.create(owner, methodInsnNode),
                 ContainerContext.from(parent));
-        if (suggestion != null) {
-            return suggestion;
+    }
+
+    @Override
+    public @Nullable String suggestFromMethod(
+            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
+            throws IOException {
+        @Nullable String suggestion;
+        for (final LvtSuggester delegate : this.suggesters) {
+            suggestion = delegate.suggestFromMethod(call, insn, container);
+            if (suggestion != null) {
+                return suggestion;
+            }
         }
-        return this.assignmentSuggester.suggestNameFromAssignment(
-                (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
+        this.missedNameSuggestions
+                .computeIfAbsent(
+                        call.data().name() + "," + insn.owner().name() + "," + insn.node().desc,
+                        (k) -> new AtomicInteger(0))
+                .incrementAndGet();
+        return null;
+    }
+
+    @Override
+    public @Nullable String suggestFromField(
+            final FieldCallContext call, final FieldInsnContext insn, final ContainerContext container)
+            throws IOException {
+        @Nullable String suggestion;
+        for (final LvtSuggester delegate : this.suggesters) {
+            suggestion = delegate.suggestFromField(call, insn, container);
+            if (suggestion != null) {
+                return suggestion;
+            }
+        }
+        return null;
     }
 
     private static @Nullable MethodData findMethod(

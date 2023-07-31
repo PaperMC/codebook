@@ -59,14 +59,14 @@ public class LvtNamer {
 
     private final HypoContext context;
     private final MappingSet mappings;
-    private final LvtSuggester lvtSuggester;
+    private final RootLvtSuggester lvtSuggester;
 
     public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
 
     public LvtNamer(final HypoContext context, final MappingSet mappings) throws IOException {
         this.mappings = mappings;
         this.context = context;
-        this.lvtSuggester = new LvtSuggester(context, this.missedNameSuggestions);
+        this.lvtSuggester = new RootLvtSuggester(context, this.missedNameSuggestions);
     }
 
     public void processClass(final AsmClassData classData) throws IOException {
@@ -177,7 +177,7 @@ public class LvtNamer {
                     fixOuterScopeName(
                             localClassClosure,
                             outerLvt.name,
-                            LvtSuggester.determineFinalName(outerLvt.name, scopedNames),
+                            RootLvtSuggester.determineFinalName(outerLvt.name, scopedNames),
                             outerLvt.index);
                 }
             }
@@ -211,7 +211,7 @@ public class LvtNamer {
                     paramName = LvtTypeSuggester.suggestNameFromType(this.context, paramTypes.get(i));
                 }
 
-                final String finalName = LvtSuggester.determineFinalName(paramName, scopedNames);
+                final String finalName = RootLvtSuggester.determineFinalName(paramName, scopedNames);
                 if (node.parameters.get(i) == null) {
                     node.parameters.set(i, new ParameterNode(finalName, 0));
                 } else {
@@ -312,7 +312,7 @@ public class LvtNamer {
 
             @Nullable String mappedName = null;
             if (paramName != null) {
-                mappedName = LvtSuggester.determineFinalName(paramName, scopedNames);
+                mappedName = RootLvtSuggester.determineFinalName(paramName, scopedNames);
             }
 
             final String selectedName =

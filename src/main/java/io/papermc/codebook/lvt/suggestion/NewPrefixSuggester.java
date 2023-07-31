@@ -22,23 +22,36 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
+import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
+
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
+import java.io.IOException;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class GenericSuggester implements LvtSuggester {
+public class NewPrefixSuggester implements LvtSuggester {
 
     @Override
     public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
-        return switch (call.data().name()) {
-            case "hashCode" -> "hashCode";
-            case "size" -> "size";
-            case "length" -> "len";
-            case "freeze" -> "frozen";
-            case "readLine" -> "line";
-            default -> null;
-        };
+            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
+            throws IOException {
+        final String methodName = call.data().name();
+        if (!methodName.startsWith("new") || methodName.equals("new")) {
+            return null;
+        }
+
+        final @Nullable String result =
+                switch (insn.owner().name()) {
+                    case "com/google/common/collect/Lists" -> "list";
+                    case "com/google/common/collect/Maps" -> "map";
+                    case "com/google/common/collect/Sets" -> "set";
+                    default -> null;
+                };
+        if (result != null) {
+            return result;
+        }
+
+        return decapitalize(methodName, 3);
     }
 }
