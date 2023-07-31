@@ -22,6 +22,7 @@
 
 package io.papermc.codebook.lvt.suggestion.numbers;
 
+import static io.papermc.codebook.lvt.LvtUtil.hasPrefix;
 import static io.papermc.codebook.lvt.suggestion.numbers.RandomUtil.createNextRandomName;
 
 import dev.denwav.hypo.model.data.types.JvmType;
@@ -41,17 +42,16 @@ public class MthRandomSuggester implements LvtSuggester {
     public @Nullable String suggestFromMethod(
             final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
         final String methodName = call.data().name();
-        if (!insn.owner().name().equals(MTH_NAME)) {
+        if (!insn.ownerEqualTo(MTH_NAME)) {
             return null;
         }
 
-        if (!methodName.startsWith("next") || "next".equals(methodName)) {
+        if (!hasPrefix(methodName, "next")) {
             return null;
         }
 
         final List<JvmType> params = call.data().params();
-        if (params.isEmpty()
-                || !params.get(0).asInternalName().equals(RandomSourceSuggester.RANDOM_SOURCE_TYPE.asInternalName())) {
+        if (params.isEmpty() || !params.get(0).equals(RandomSourceSuggester.RANDOM_SOURCE_TYPE)) {
             return null;
         }
 

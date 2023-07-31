@@ -22,6 +22,8 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
+import static io.papermc.codebook.lvt.LvtUtil.hasPrefix;
+
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -36,7 +38,7 @@ final class SuggestionUtil {
         }
         @Nullable String prefix = null;
         for (final String possiblePrefix : possiblePrefixes) {
-            if (!possiblePrefix.equals(methodName) && methodName.startsWith(possiblePrefix)) {
+            if (hasPrefix(methodName, possiblePrefix)) {
                 prefix = possiblePrefix;
                 break;
             }

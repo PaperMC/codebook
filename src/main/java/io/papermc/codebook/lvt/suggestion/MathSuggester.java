@@ -36,7 +36,7 @@ public class MathSuggester implements LvtSuggester {
             throws IOException {
         final String methodName = call.data().name();
 
-        if (insn.owner().name().equals("java/lang/Math")) {
+        if (insn.ownerEqualTo("java/lang/Math")) {
             return switch (methodName) {
                 case "max" -> "max";
                 case "min" -> "min";
@@ -59,7 +59,7 @@ public class MathSuggester implements LvtSuggester {
             };
         }
 
-        if (insn.owner().name().equals("net/minecraft/util/Mth")) {
+        if (insn.ownerEqualTo("net/minecraft/util/Mth")) {
             return switch (methodName) {
                 case "abs" -> "abs";
                 case "absMax" -> "max";

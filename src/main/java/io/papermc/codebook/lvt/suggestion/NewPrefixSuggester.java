@@ -23,6 +23,7 @@
 package io.papermc.codebook.lvt.suggestion;
 
 import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
+import static io.papermc.codebook.lvt.LvtUtil.hasPrefix;
 
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
@@ -37,7 +38,7 @@ public class NewPrefixSuggester implements LvtSuggester {
             final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
             throws IOException {
         final String methodName = call.data().name();
-        if (!methodName.startsWith("new") || methodName.equals("new")) {
+        if (!hasPrefix(methodName, "new")) {
             return null;
         }
 

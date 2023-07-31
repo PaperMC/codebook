@@ -30,4 +30,8 @@ public record MethodInsnContext(ClassData owner, MethodInsnNode node) {
     public static MethodInsnContext create(final ClassData owner, final MethodInsnNode node) {
         return new MethodInsnContext(owner, node);
     }
+
+    public boolean ownerEqualTo(final String name) {
+        return this.owner().name().equals(name);
+    }
 }

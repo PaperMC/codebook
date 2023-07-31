@@ -37,8 +37,7 @@ public class StringSuggester implements LvtSuggester {
         final String methodName = call.data().name();
 
         if (methodName.startsWith("split")) {
-            if (insn.owner().name().equals("java/lang/String")
-                    || insn.owner().name().equals("com/google/common/base/Splitter")) {
+            if (insn.ownerEqualTo("java/lang/String") || insn.ownerEqualTo("com/google/common/base/Splitter")) {
                 return "parts";
             }
         }

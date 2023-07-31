@@ -82,4 +82,8 @@ public final class LvtUtil {
         }
         return true;
     }
+
+    public static boolean hasPrefix(final String text, final String prefix) {
+        return text.length() > prefix.length() && text.startsWith(prefix);
+    }
 }
