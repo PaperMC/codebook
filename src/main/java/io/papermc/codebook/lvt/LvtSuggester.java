@@ -33,8 +33,9 @@ import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.MethodDescriptor;
 import dev.denwav.hypo.model.data.types.JvmType;
 import io.papermc.codebook.lvt.suggestion.RootLvtSuggester;
-import io.papermc.codebook.lvt.suggestion.context.InsnContext;
-import io.papermc.codebook.lvt.suggestion.context.LvtContext;
+import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
@@ -150,7 +151,9 @@ public final class LvtSuggester {
         }
 
         final @Nullable String suggestion = this.rootLvtSuggester.suggestFromMethod(
-                LvtContext.method(InsnContext.method(parent), methodInsnNode, method));
+                MethodCallContext.create(method),
+                MethodInsnContext.create(owner, methodInsnNode),
+                ContainerContext.from(parent));
         if (suggestion != null) {
             return suggestion;
         }

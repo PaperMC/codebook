@@ -26,8 +26,11 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import dev.denwav.hypo.core.HypoContext;
-import io.papermc.codebook.lvt.suggestion.context.LvtContext.Field;
-import io.papermc.codebook.lvt.suggestion.context.LvtContext.Method;
+import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.field.FieldCallContext;
+import io.papermc.codebook.lvt.suggestion.context.field.FieldInsnContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import io.papermc.codebook.lvt.suggestion.numbers.MthRandomSuggester;
 import io.papermc.codebook.lvt.suggestion.numbers.RandomSourceSuggester;
 import java.io.IOException;
@@ -61,27 +64,31 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
     }
 
     @Override
-    public @Nullable String suggestFromMethod(final Method method) throws IOException {
+    public @Nullable String suggestFromMethod(
+            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
+            throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {
-            suggestion = delegate.suggestFromMethod(method);
+            suggestion = delegate.suggestFromMethod(call, insn, container);
             if (suggestion != null) {
                 return suggestion;
             }
         }
         this.missedNameSuggestions
                 .computeIfAbsent(
-                        method.data().name() + "," + method.insn().owner + "," + method.insn().desc,
+                        call.data().name() + "," + insn.owner().name() + "," + insn.node().desc,
                         (k) -> new AtomicInteger(0))
                 .incrementAndGet();
         return null;
     }
 
     @Override
-    public @Nullable String suggestFromField(final Field field) throws IOException {
+    public @Nullable String suggestFromField(
+            final FieldCallContext call, final FieldInsnContext insn, final ContainerContext container)
+            throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {
-            suggestion = delegate.suggestFromField(field);
+            suggestion = delegate.suggestFromField(call, insn, container);
             if (suggestion != null) {
                 return suggestion;
             }

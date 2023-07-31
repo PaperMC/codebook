@@ -20,26 +20,16 @@
  * USA
  */
 
-package io.papermc.codebook.lvt.suggestion;
+package io.papermc.codebook.lvt.suggestion.context.field;
 
-import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
-import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
-import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
-import java.io.IOException;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import dev.denwav.hypo.asm.AsmFieldData;
+import dev.denwav.hypo.model.data.ClassData;
+import dev.denwav.hypo.model.data.FieldData;
+import org.objectweb.asm.tree.FieldNode;
 
-public class GenericSuggester implements LvtSuggester {
+public record FieldCallContext(FieldData data, ClassData parent, FieldNode node) {
 
-    @Override
-    public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
-            throws IOException {
-        return switch (call.data().name()) {
-            case "hashCode" -> "hashCode";
-            case "size" -> "size";
-            case "length" -> "len";
-            case "freeze" -> "frozen";
-            default -> null;
-        };
+    public static FieldCallContext create(final FieldData field) {
+        return new FieldCallContext(field, field.parentClass(), ((AsmFieldData) field).getNode());
     }
 }

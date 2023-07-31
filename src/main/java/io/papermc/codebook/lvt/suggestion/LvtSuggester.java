@@ -22,17 +22,25 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
-import io.papermc.codebook.lvt.suggestion.context.LvtContext;
+import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.field.FieldCallContext;
+import io.papermc.codebook.lvt.suggestion.context.field.FieldInsnContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.io.IOException;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public interface LvtSuggester {
 
-    default @Nullable String suggestFromMethod(final LvtContext.Method method) throws IOException {
+    default @Nullable String suggestFromMethod(
+            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
+            throws IOException {
         return null;
     }
 
-    default @Nullable String suggestFromField(final LvtContext.Field field) throws IOException {
+    default @Nullable String suggestFromField(
+            final FieldCallContext call, final FieldInsnContext insn, final ContainerContext container)
+            throws IOException {
         return null;
     }
 }

@@ -20,13 +20,14 @@
  * USA
  */
 
-package io.papermc.codebook.lvt.suggestion;
+package io.papermc.codebook.lvt.suggestion.context.field;
 
-import dev.denwav.hypo.core.HypoContext;
-import jakarta.inject.Inject;
+import dev.denwav.hypo.model.data.ClassData;
+import org.objectweb.asm.tree.FieldInsnNode;
 
-public abstract class InjectedLvtSuggester implements LvtSuggester {
+public record FieldInsnContext(ClassData owner, FieldInsnNode node) {
 
-    @Inject
-    protected HypoContext hypoContext;
+    public static FieldInsnContext create(final ClassData owner, final FieldInsnNode node) {
+        return new FieldInsnContext(owner, node);
+    }
 }

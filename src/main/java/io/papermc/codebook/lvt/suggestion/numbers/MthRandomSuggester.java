@@ -25,20 +25,23 @@ package io.papermc.codebook.lvt.suggestion.numbers;
 import static io.papermc.codebook.lvt.suggestion.numbers.RandomUtil.createNextRandomName;
 
 import dev.denwav.hypo.model.data.types.JvmType;
-import io.papermc.codebook.lvt.suggestion.InjectedLvtSuggester;
-import io.papermc.codebook.lvt.suggestion.context.LvtContext.Method;
+import io.papermc.codebook.lvt.suggestion.LvtSuggester;
+import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 // primitive random-related methods in Mth
-public class MthRandomSuggester extends InjectedLvtSuggester {
+public class MthRandomSuggester implements LvtSuggester {
 
     static final String MTH_NAME = "net/minecraft/util/Mth";
 
     @Override
-    public @Nullable String suggestFromMethod(final Method method) {
-        final String methodName = method.data().name();
-        if (!method.owner().name().equals(MTH_NAME)) {
+    public @Nullable String suggestFromMethod(
+            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
+        final String methodName = call.data().name();
+        if (!insn.owner().name().equals(MTH_NAME)) {
             return null;
         }
 
@@ -46,12 +49,12 @@ public class MthRandomSuggester extends InjectedLvtSuggester {
             return null;
         }
 
-        final List<JvmType> params = method.data().params();
+        final List<JvmType> params = call.data().params();
         if (params.isEmpty()
                 || !params.get(0).asInternalName().equals(RandomSourceSuggester.RANDOM_SOURCE_TYPE.asInternalName())) {
             return null;
         }
 
-        return createNextRandomName(method.data());
+        return createNextRandomName(call.data());
     }
 }

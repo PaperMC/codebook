@@ -24,34 +24,46 @@ package io.papermc.codebook.lvt.suggestion.numbers;
 
 import static io.papermc.codebook.lvt.suggestion.numbers.RandomUtil.createNextRandomName;
 
+import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.types.ClassType;
 import dev.denwav.hypo.model.data.types.JvmType;
 import io.papermc.codebook.exceptions.UnexpectedException;
-import io.papermc.codebook.lvt.suggestion.InjectedLvtSuggester;
-import io.papermc.codebook.lvt.suggestion.context.LvtContext.Method;
+import io.papermc.codebook.lvt.suggestion.LvtSuggester;
+import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
+import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
+import jakarta.inject.Inject;
 import java.io.IOException;
-import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 // primitive methods in RandomSource
-public class RandomSourceSuggester extends InjectedLvtSuggester {
+public class RandomSourceSuggester implements LvtSuggester {
 
     static final JvmType RANDOM_SOURCE_TYPE = new ClassType("net/minecraft/util/RandomSource");
 
-    @MonotonicNonNull
-    private ClassData randomSourceClass = null;
+    private final ClassData randomSourceClass;
+
+    @Inject
+    RandomSourceSuggester(final HypoContext hypoContext) throws IOException {
+        final @Nullable ClassData random = hypoContext.getContextProvider().findClass(RANDOM_SOURCE_TYPE);
+        if (random == null) {
+            throw new UnexpectedException("Cannot find " + RANDOM_SOURCE_TYPE + " on the classpath.");
+        }
+        this.randomSourceClass = random;
+    }
 
     @Override
-    public @Nullable String suggestFromMethod(final Method method) throws IOException {
-        final String methodName = method.data().name();
-        ClassData ownerClass = method.owner();
-        if (ownerClass.doesExtendOrImplement(this.randomSourceClass())) {
-            ownerClass = this.randomSourceClass();
+    public @Nullable String suggestFromMethod(
+            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
+            throws IOException {
+        final String methodName = call.data().name();
+        ClassData ownerClass = insn.owner();
+        if (ownerClass.doesExtendOrImplement(this.randomSourceClass)) {
+            ownerClass = this.randomSourceClass;
         }
 
-        if (!ownerClass.equals(this.randomSourceClass())) {
+        if (!ownerClass.equals(this.randomSourceClass)) {
             return null;
         }
 
@@ -59,19 +71,6 @@ public class RandomSourceSuggester extends InjectedLvtSuggester {
             return null;
         }
 
-        return createNextRandomName(method.data());
-    }
-
-    @EnsuresNonNull("randomSourceClass")
-    private ClassData randomSourceClass() throws IOException {
-        if (this.randomSourceClass == null) {
-            final @Nullable ClassData random =
-                    this.hypoContext.getContextProvider().findClass(RANDOM_SOURCE_TYPE);
-            if (random == null) {
-                throw new UnexpectedException("Cannot find " + RANDOM_SOURCE_TYPE + " on the classpath.");
-            }
-            this.randomSourceClass = random;
-        }
-        return this.randomSourceClass;
+        return createNextRandomName(call.data());
     }
 }

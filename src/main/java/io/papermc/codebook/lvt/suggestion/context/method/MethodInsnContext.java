@@ -20,26 +20,14 @@
  * USA
  */
 
-package io.papermc.codebook.lvt.suggestion;
+package io.papermc.codebook.lvt.suggestion.context.method;
 
-import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
-import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
-import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
-import java.io.IOException;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import dev.denwav.hypo.model.data.ClassData;
+import org.objectweb.asm.tree.MethodInsnNode;
 
-public class GenericSuggester implements LvtSuggester {
+public record MethodInsnContext(ClassData owner, MethodInsnNode node) {
 
-    @Override
-    public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
-            throws IOException {
-        return switch (call.data().name()) {
-            case "hashCode" -> "hashCode";
-            case "size" -> "size";
-            case "length" -> "len";
-            case "freeze" -> "frozen";
-            default -> null;
-        };
+    public static MethodInsnContext create(final ClassData owner, final MethodInsnNode node) {
+        return new MethodInsnContext(owner, node);
     }
 }

@@ -20,8 +20,17 @@
  * USA
  */
 
-package io.papermc.codebook.lvt.suggestion.context;
+package io.papermc.codebook.lvt.suggestion.context.method;
 
+import static io.papermc.codebook.lvt.suggestion.context.ContainerContext.fromHypo;
+
+import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.MethodData;
+import org.objectweb.asm.tree.MethodNode;
 
-record MethodInsnContextImpl(MethodData data) implements InsnContext.Method {}
+public record MethodCallContext(MethodData data, ClassData parent, MethodNode node) {
+
+    public static MethodCallContext create(final MethodData method) {
+        return new MethodCallContext(method, method.parentClass(), fromHypo(method));
+    }
+}
