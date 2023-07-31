@@ -22,7 +22,7 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
-import static io.papermc.codebook.lvt.suggestion.SuggestionUtil.tryMatchPrefix;
+import static io.papermc.codebook.lvt.LvtUtil.tryMatchPrefix;
 
 import dev.denwav.hypo.model.data.types.PrimitiveType;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;

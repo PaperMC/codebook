@@ -25,6 +25,7 @@ package io.papermc.codebook.lvt;
 import dev.denwav.hypo.asm.HypoAsmUtil;
 import dev.denwav.hypo.model.data.types.JvmType;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Type;
@@ -69,6 +70,21 @@ public final class LvtUtil {
             }
         }
         return nextWord.toString();
+    }
+
+    public static @Nullable String tryMatchPrefix(final String methodName, final List<String> possiblePrefixes) {
+        // skip any exact match
+        if (possiblePrefixes.contains(methodName)) {
+            return null;
+        }
+        @Nullable String prefix = null;
+        for (final String possiblePrefix : possiblePrefixes) {
+            if (hasPrefix(methodName, possiblePrefix)) {
+                prefix = possiblePrefix;
+                break;
+            }
+        }
+        return prefix;
     }
 
     public static boolean isStringAllUppercase(final String input) {

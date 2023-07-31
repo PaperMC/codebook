@@ -23,7 +23,7 @@
 package io.papermc.codebook.lvt.suggestion;
 
 import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
-import static io.papermc.codebook.lvt.suggestion.SuggestionUtil.tryMatchPrefix;
+import static io.papermc.codebook.lvt.LvtUtil.tryMatchPrefix;
 
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
