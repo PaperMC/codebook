@@ -102,13 +102,11 @@ public final class LvtSuggester {
     }
 
     public static String determineFinalName(final String suggestedName, final Set<String> scopedNames) {
-        final String shortName = shortenName(suggestedName);
-
         final String name;
-        if (JAVA_KEYWORDS.contains(shortName)) {
-            name = "_" + shortName;
+        if (JAVA_KEYWORDS.contains(suggestedName)) {
+            name = "_" + suggestedName;
         } else {
-            name = shortName;
+            name = suggestedName;
         }
 
         if (scopedNames.add(name)) {
@@ -177,13 +175,6 @@ public final class LvtSuggester {
         }
 
         return null;
-    }
-
-    private static String shortenName(final String name) {
-        if (name.equals("context")) {
-            return "ctx";
-        }
-        return name;
     }
 
     private static final Set<String> JAVA_KEYWORDS = Set.of(

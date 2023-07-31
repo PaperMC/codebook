@@ -274,6 +274,12 @@ public final class Main implements Callable<Integer> {
                     + "There is no default value when not provided.")
     private @Nullable String unpickMavenBaseUrl;
 
+    @CommandLine.Option(
+            names = {"-v", "--verbose"},
+            description = "Don't suppress logging.",
+            defaultValue = "false")
+    private boolean verbose;
+
     public Main() {}
 
     public static void main(final String[] args) {
@@ -308,15 +314,20 @@ public final class Main implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        SysOutOverSLF4J.sendSystemOutAndErrToSLF4J();
-        SLF4JBridgeHandler.removeHandlersForRootLogger();
-        SLF4JBridgeHandler.install();
+        final boolean v = this.verbose;
+        if (!v) {
+            SysOutOverSLF4J.sendSystemOutAndErrToSLF4J();
+            SLF4JBridgeHandler.removeHandlersForRootLogger();
+            SLF4JBridgeHandler.install();
+        }
 
         try {
             final CodeBookContext context = this.createContext();
             new CodeBook(context).exec();
         } finally {
-            SysOutOverSLF4J.stopSendingSystemOutAndErrToSLF4J();
+            if (!v) {
+                SysOutOverSLF4J.stopSendingSystemOutAndErrToSLF4J();
+            }
         }
         return 0;
     }

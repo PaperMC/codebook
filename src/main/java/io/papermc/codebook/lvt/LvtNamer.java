@@ -29,13 +29,16 @@ import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.generic.HypoHydration;
 import dev.denwav.hypo.hydrate.generic.MethodClosure;
 import dev.denwav.hypo.model.data.ClassData;
+import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.HypoKey;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
 import dev.denwav.hypo.model.data.types.PrimitiveType;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -73,13 +76,23 @@ public class LvtNamer {
     }
 
     public void fillNames(final MethodData method) throws IOException {
+        // Hopefully the overhead here won't be too bad. This method is generally safe in parallel, but
+        // `fixOuterScopeName` does require
+        // going back to modify previous methods, so we need to protect against multiple conflicting writes. Each class
+        // is run in parallel,
+        // so most of the time this shouldn't block between threads. Handling local classes is the only time we leave
+        // our "lane" so-to-speak
+        // and access another class from this method, which is what we are protecting against here.
+        //noinspection SynchronizationOnLocalVariableOrMethodParameter
+        synchronized (method) {
+            this.fillNames0(method);
+        }
+    }
+
+    private void fillNames0(final MethodData method) throws IOException {
         final @Nullable Set<String> names = method.get(SCOPED_NAMES);
         if (names != null) {
             // If scoped names is already filled out, this method has already been visited
-            // We don't need to be concerned with a single thread being processed by multiple threads,
-            // it can happen, but that will simply result in the same output, which is still consistent.
-            // This is fast enough that a little bit of duplicate work is acceptable, not worth trying
-            // to prevent it.
             return;
         }
 
@@ -117,8 +130,10 @@ public class LvtNamer {
 
         final ClassData parentClass = method.parentClass();
         // A method cannot be both a lambda expression and a local class, so if we've already determined an outer
-        // method,
-        // there's nothing to do here.
+        // method, there's nothing to do here.
+        Set<String> innerClassFieldNames = Set.of();
+        @Nullable MethodClosure<ClassData> localClassClosure = null;
+        int @Nullable [] innerClassOuterMethodParamLvtIndices = null;
         localCheck:
         if (outerMethod == null) {
             final @Nullable List<MethodClosure<ClassData>> localClasses = parentClass.get(HypoHydration.LOCAL_CLASSES);
@@ -126,9 +141,12 @@ public class LvtNamer {
                 break localCheck;
             }
 
-            final MethodClosure<ClassData> localClass = localClasses.get(0);
-            outerMethod = (AsmMethodData) localClass.getContainingMethod();
+            localClassClosure = localClasses.get(0);
+            outerMethod = (AsmMethodData) localClassClosure.getContainingMethod();
             // local classes don't capture as lvt, so don't assign `outerMethodParamLvtIndices`
+
+            innerClassFieldNames = collectAllFields(parentClass);
+            innerClassOuterMethodParamLvtIndices = localClassClosure.getParamLvtIndices();
         }
 
         // This method (`fillNames`) will ensure the outer method has names defined in its scope first.
@@ -137,19 +155,37 @@ public class LvtNamer {
             this.fillNames(outerMethod);
         }
 
-        final Optional<MethodMapping> methodMapping = this.mappings
-                .getClassMapping(parentClass.name())
-                .flatMap(c -> c.getMethodMapping(method.name(), method.descriptorText()));
-
         // We inherit names from our outer scope, if it exists. These names will be included in our scope for any
         // potential inner scopes (other nested lambdas or local classes) that are present in this method too
         final Set<String> scopedNames;
         if (outerMethod != null) {
             final @Nullable Set<String> outerScope = outerMethod.get(SCOPED_NAMES);
-            scopedNames = new HashSet<>(outerScope == null ? Set.of() : outerScope);
+            scopedNames = new LinkedHashSet<>(outerScope == null ? Set.of() : outerScope);
         } else {
-            scopedNames = new HashSet<>();
+            scopedNames = new LinkedHashSet<>();
         }
+
+        if (innerClassOuterMethodParamLvtIndices != null && !innerClassFieldNames.isEmpty()) {
+            for (final LocalVariableNode outerLvt : outerMethod.getNode().localVariables) {
+                if (find(innerClassOuterMethodParamLvtIndices, outerLvt.index) == -1) {
+                    continue;
+                }
+                if (innerClassFieldNames.contains(outerLvt.name)) {
+                    // We have a field in this local class which clashes with an outer variable.
+                    // The only way to handle this kin of clash it to go back up and fix the
+                    // local variable, we can't fix it here.
+                    fixOuterScopeName(
+                            localClassClosure,
+                            outerLvt.name,
+                            LvtSuggester.determineFinalName(outerLvt.name, scopedNames),
+                            outerLvt.index);
+                }
+            }
+        }
+
+        final Optional<MethodMapping> methodMapping = this.mappings
+                .getClassMapping(parentClass.name())
+                .flatMap(c -> c.getMethodMapping(method.name(), method.descriptorText()));
 
         // If there's no LVT table there's nothing for us to process
         if (node.localVariables == null) {
@@ -296,6 +332,100 @@ public class LvtNamer {
     }
 
     private record UsedLvtName(String name, String desc, int index) {}
+
+    private static Set<String> collectAllFields(final ClassData classData) throws IOException {
+        final HashSet<String> names = new HashSet<>();
+        _collectAllFields(classData, classData, names);
+        names.removeIf(n -> n.startsWith("val$") || n.startsWith("this$"));
+        return names;
+    }
+
+    private static void _collectAllFields(final ClassData container, final ClassData current, final HashSet<String> res)
+            throws IOException {
+        final List<FieldData> fields = current.fields();
+        if (container == current) {
+            for (final FieldData field : fields) {
+                res.add(field.name());
+            }
+        } else {
+            for (final FieldData field : fields) {
+                switch (field.visibility()) {
+                    case PUBLIC, PROTECTED -> res.add(field.name());
+                    case PACKAGE -> {
+                        if (packageName(container).equals(packageName(current))) {
+                            res.add(field.name());
+                        }
+                    }
+                }
+            }
+        }
+
+        final @Nullable ClassData superClass = current.superClass();
+        if (superClass != null) {
+            _collectAllFields(container, superClass, res);
+        }
+    }
+
+    private static void fixOuterScopeName(
+            final MethodClosure<?> parentDef, final String badName, final String newName, final int lvtIndex) {
+        final MethodData containing = parentDef.getContainingMethod();
+        final MethodNode node = ((AsmMethodData) containing).getNode();
+
+        for (final LocalVariableNode lvt : node.localVariables) {
+            if (lvt.index == lvtIndex && lvt.name.equals(badName)) {
+                lvt.name = newName;
+            }
+        }
+
+        final int paramIndex = fromLvtToParamIndex(lvtIndex, containing);
+        if (paramIndex != -1 && node.parameters != null) {
+            node.parameters.get(paramIndex).name = newName;
+        }
+
+        // protect against `fillNames`
+        synchronized (containing) {
+            final @Nullable Set<String> containingScope = containing.get(SCOPED_NAMES);
+            // should never be null
+            if (containingScope != null) {
+                containingScope.add(newName);
+            }
+        }
+
+        final @Nullable List<MethodClosure<MethodData>> lambdas = containing.get(HypoHydration.LAMBDA_CALLS);
+        final @Nullable List<MethodClosure<ClassData>> localClasses = containing.get(HypoHydration.LOCAL_CLASSES);
+        final ArrayList<MethodClosure<?>> innerClosures = new ArrayList<>(
+                (lambdas != null ? lambdas.size() : 0) + (localClasses != null ? localClasses.size() : 0));
+        if (lambdas != null) {
+            for (final MethodClosure<MethodData> lambda : lambdas) {
+                if (!lambda.getContainingMethod().equals(containing)) {
+                    innerClosures.add(lambda);
+                }
+            }
+        }
+        if (localClasses != null) {
+            for (final MethodClosure<ClassData> localClass : localClasses) {
+                if (!localClass.getContainingMethod().equals(containing)) {
+                    innerClosures.add(localClass);
+                }
+            }
+        }
+
+        for (final MethodClosure<?> closure : innerClosures) {
+            if (closure.getParamLvtIndices().length > lvtIndex) {
+                fixOuterScopeName(closure, badName, newName, closure.getParamLvtIndices()[lvtIndex]);
+            }
+        }
+    }
+
+    private static String packageName(final ClassData classData) {
+        final String name = classData.name();
+        final int lastIndex = name.lastIndexOf('/');
+        if (lastIndex == -1) {
+            return name;
+        } else {
+            return name.substring(0, lastIndex);
+        }
+    }
 
     private static int find(final int[] array, final int value) {
         return find(array, value, array.length);
