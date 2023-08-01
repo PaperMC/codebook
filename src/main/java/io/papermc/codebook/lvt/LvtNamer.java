@@ -27,7 +27,8 @@ import dev.denwav.hypo.asm.AsmConstructorData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.generic.HypoHydration;
-import dev.denwav.hypo.hydrate.generic.MethodClosure;
+import dev.denwav.hypo.hydrate.generic.LambdaClosure;
+import dev.denwav.hypo.hydrate.generic.LocalClassClosure;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.HypoKey;
@@ -100,14 +101,15 @@ public class LvtNamer {
         // If it does, we need to keep track of the LVTs we inherit
         @Nullable AsmMethodData outerMethod = null;
         int @Nullable [] outerMethodParamLvtIndices = null;
-        final @Nullable List<MethodClosure<MethodData>> lambdaCalls = method.get(HypoHydration.LAMBDA_CALLS);
+        @Nullable LambdaClosure lambda = null;
+        final @Nullable List<LambdaClosure> lambdaCalls = method.get(HypoHydration.LAMBDA_CALLS);
         // Only track synthetic, non-synthetic means a method reference which does not behave as a closure (does not
         // capture LVT)
         if (lambdaCalls != null && method.isSynthetic()) {
-            for (final MethodClosure<MethodData> lambdaCall : lambdaCalls) {
+            for (final LambdaClosure lambdaCall : lambdaCalls) {
                 // lambdaCall.getClosure() -> The lambda method
                 // lambdaCall.getContainingMethod() -> The outer method
-                if (lambdaCall.getClosure().equals(method)) {
+                if (lambdaCall.getLambda().equals(method)) {
                     outerMethod = (AsmMethodData) lambdaCall.getContainingMethod();
                     if (outerMethod.equals(method)) {
                         // lambdas can be recursive
@@ -115,6 +117,7 @@ public class LvtNamer {
                         continue;
                     }
                     outerMethodParamLvtIndices = lambdaCall.getParamLvtIndices();
+                    lambda = lambdaCall;
                     // there can only be 1 outer method
                     break;
                 }
@@ -132,11 +135,11 @@ public class LvtNamer {
         // A method cannot be both a lambda expression and a local class, so if we've already determined an outer
         // method, there's nothing to do here.
         Set<String> innerClassFieldNames = Set.of();
-        @Nullable MethodClosure<ClassData> localClassClosure = null;
+        @Nullable LocalClassClosure localClassClosure = null;
         int @Nullable [] innerClassOuterMethodParamLvtIndices = null;
         localCheck:
         if (outerMethod == null) {
-            final @Nullable List<MethodClosure<ClassData>> localClasses = parentClass.get(HypoHydration.LOCAL_CLASSES);
+            final @Nullable List<LocalClassClosure> localClasses = parentClass.get(HypoHydration.LOCAL_CLASSES);
             if (localClasses == null || localClasses.isEmpty()) {
                 break localCheck;
             }
@@ -175,7 +178,7 @@ public class LvtNamer {
                     // The only way to handle this kin of clash it to go back up and fix the
                     // local variable, we can't fix it here.
                     fixOuterScopeName(
-                            localClassClosure,
+                            new ClosureInfo(localClassClosure.getContainingMethod(), localClassClosure.getParamLvtIndices()),
                             outerLvt.name,
                             RootLvtSuggester.determineFinalName(outerLvt.name, scopedNames),
                             outerLvt.index);
@@ -183,9 +186,19 @@ public class LvtNamer {
             }
         }
 
-        final Optional<MethodMapping> methodMapping = this.mappings
+        Optional<MethodMapping> methodMapping = this.mappings
                 .getClassMapping(parentClass.name())
                 .flatMap(c -> c.getMethodMapping(method.name(), method.descriptorText()));
+
+        boolean usingLambdaMethodMapping = false;
+        if (methodMapping.isEmpty() && lambda != null && lambda.getInterfaceMethod() != null) {
+            final LambdaClosure finalLambda = lambda;
+            methodMapping = this.mappings.getClassMapping(lambda.getInterfaceMethod().parentClass().name())
+                    .flatMap(c -> c.getMethodMapping(finalLambda.getInterfaceMethod().name(), finalLambda.getInterfaceMethod().descriptorText()));
+            if (methodMapping.isPresent()) {
+                usingLambdaMethodMapping = true;
+            }
+        }
 
         // If there's no LVT table there's nothing for us to process
         if (node.localVariables == null) {
@@ -281,6 +294,7 @@ public class LvtNamer {
         int usedNameIndex = 0;
         final @Nullable UsedLvtName[] usedNames = new UsedLvtName[node.localVariables.size()];
 
+        final int parameterMappingIdxOffset = usingLambdaMethodMapping ? ourCapturedLvts.length - 1 : 0;
         outer:
         for (final LocalVariableNode lvt : node.localVariables) {
             if (lvt.index == 0 && !method.isStatic()) {
@@ -306,7 +320,7 @@ public class LvtNamer {
             }
 
             final @Nullable String paramName = methodMapping
-                    .flatMap(m -> m.getParameterMapping(lvt.index))
+                    .flatMap(m -> m.getParameterMapping(lvt.index - parameterMappingIdxOffset))
                     .map(Mapping::getDeobfuscatedName)
                     .orElse(null);
 
@@ -368,8 +382,8 @@ public class LvtNamer {
     }
 
     private static void fixOuterScopeName(
-            final MethodClosure<?> parentDef, final String badName, final String newName, final int lvtIndex) {
-        final MethodData containing = parentDef.getContainingMethod();
+            final ClosureInfo closureInfo, final String badName, final String newName, final int lvtIndex) {
+        final MethodData containing = closureInfo.containing();
         final MethodNode node = ((AsmMethodData) containing).getNode();
 
         for (final LocalVariableNode lvt : node.localVariables) {
@@ -392,31 +406,33 @@ public class LvtNamer {
             }
         }
 
-        final @Nullable List<MethodClosure<MethodData>> lambdas = containing.get(HypoHydration.LAMBDA_CALLS);
-        final @Nullable List<MethodClosure<ClassData>> localClasses = containing.get(HypoHydration.LOCAL_CLASSES);
-        final ArrayList<MethodClosure<?>> innerClosures = new ArrayList<>(
+        final @Nullable List<LambdaClosure> lambdas = containing.get(HypoHydration.LAMBDA_CALLS);
+        final @Nullable List<LocalClassClosure> localClasses = containing.get(HypoHydration.LOCAL_CLASSES);
+        final ArrayList<ClosureInfo> innerClosureContainingMethods = new ArrayList<>(
                 (lambdas != null ? lambdas.size() : 0) + (localClasses != null ? localClasses.size() : 0));
         if (lambdas != null) {
-            for (final MethodClosure<MethodData> lambda : lambdas) {
+            for (final LambdaClosure lambda : lambdas) {
                 if (!lambda.getContainingMethod().equals(containing)) {
-                    innerClosures.add(lambda);
+                    innerClosureContainingMethods.add(new ClosureInfo(lambda.getContainingMethod(), lambda.getParamLvtIndices()));
                 }
             }
         }
         if (localClasses != null) {
-            for (final MethodClosure<ClassData> localClass : localClasses) {
+            for (final LocalClassClosure localClass : localClasses) {
                 if (!localClass.getContainingMethod().equals(containing)) {
-                    innerClosures.add(localClass);
+                    innerClosureContainingMethods.add(new ClosureInfo(localClass.getContainingMethod(), localClass.getParamLvtIndices()));
                 }
             }
         }
 
-        for (final MethodClosure<?> closure : innerClosures) {
-            if (closure.getParamLvtIndices().length > lvtIndex) {
-                fixOuterScopeName(closure, badName, newName, closure.getParamLvtIndices()[lvtIndex]);
+        for (final ClosureInfo closure : innerClosureContainingMethods) {
+            if (closure.paramLvtIndices().length > lvtIndex) {
+                fixOuterScopeName(closure, badName, newName, closure.paramLvtIndices()[lvtIndex]);
             }
         }
     }
+
+    private record ClosureInfo(MethodData containing, int[] paramLvtIndices) { }
 
     private static String packageName(final ClassData classData) {
         final String name = classData.name();
