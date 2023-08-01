@@ -37,6 +37,7 @@ import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.HydrationManager;
 import dev.denwav.hypo.mappings.ChangeChain;
 import dev.denwav.hypo.mappings.MappingsCompletionManager;
+import dev.denwav.hypo.mappings.contributors.CopyLambdaParametersDown;
 import dev.denwav.hypo.mappings.contributors.CopyMappingsDown;
 import dev.denwav.hypo.mappings.contributors.CopyRecordParameters;
 import io.papermc.codebook.exceptions.UnexpectedException;
@@ -120,7 +121,10 @@ public final class InspectJarPage extends CodeBookPage {
 
         // Fill in any missing mapping information
         final MappingSet completedMappings = ChangeChain.create()
-                .addLink(CopyMappingsDown.createWithoutOverwrite(), CopyRecordParameters.create())
+                .addLink(
+                        CopyMappingsDown.createWithoutOverwrite(),
+                        CopyLambdaParametersDown.createWithoutOverwrite(),
+                        CopyRecordParameters.create())
                 .applyChain(lorenzMappings, MappingsCompletionManager.create(ctx));
 
         this.bind(ParamMappings.KEY).to(completedMappings);

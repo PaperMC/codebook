@@ -8,7 +8,6 @@ plugins {
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
     maven("https://maven.parchmentmc.org") {
         name = "ParchmentMC"

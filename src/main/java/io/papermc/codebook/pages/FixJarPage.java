@@ -22,8 +22,6 @@
 
 package io.papermc.codebook.pages;
 
-import static java.util.Objects.requireNonNullElse;
-
 import com.google.common.collect.Iterables;
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmConstructorData;
@@ -42,6 +40,7 @@ import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -111,8 +110,22 @@ public final class FixJarPage extends CodeBookPage {
                     continue;
                 }
 
-                final @Nullable MethodData targetMethod = method.get(HypoHydration.SYNTHETIC_SOURCE);
-                final MethodData baseMethod = requireNonNullElse(targetMethod, method);
+                final MethodData baseMethod;
+                final @Nullable Set<MethodData> syntheticSources = method.get(HypoHydration.SYNTHETIC_SOURCES);
+                if (syntheticSources == null) {
+                    baseMethod = method;
+                } else {
+                    outer:
+                    {
+                        for (final MethodData targetMethod : syntheticSources) {
+                            if (targetMethod.parentClass().equals(method.parentClass())) {
+                                baseMethod = targetMethod;
+                                break outer;
+                            }
+                        }
+                        return;
+                    }
+                }
 
                 if (baseMethod.superMethod() != null) {
                     final MethodNode node = ((AsmMethodData) method).getNode();
