@@ -23,6 +23,7 @@
 package io.papermc.codebook.lvt;
 
 import static dev.denwav.hypo.model.data.MethodDescriptor.parseDescriptor;
+import static io.papermc.codebook.lvt.LvtUtil.prevInsnIgnoringConvertCast;
 import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
 import dev.denwav.hypo.asm.AsmClassData;
@@ -90,7 +91,7 @@ public final class LvtSuggester {
         }
 
         if (assignmentNode != null) {
-            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(assignmentNode);
+            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(node, assignmentNode);
             if (suggestedName != null) {
                 return determineFinalName(suggestedName, scopedNames);
             }
@@ -123,8 +124,12 @@ public final class LvtSuggester {
         }
     }
 
-    private @Nullable String suggestNameFromFirstAssignment(final VarInsnNode varInsn) throws IOException {
-        final AbstractInsnNode prev = varInsn.getPrevious();
+    private @Nullable String suggestNameFromFirstAssignment(
+            final MethodNode enclosingMethodNode, final VarInsnNode varInsn) throws IOException {
+        final @Nullable AbstractInsnNode prev = prevInsnIgnoringConvertCast(varInsn);
+        if (prev == null) {
+            return null;
+        }
         final int op = prev.getOpcode();
         if (op != Opcodes.INVOKESTATIC && op != Opcodes.INVOKEVIRTUAL && op != Opcodes.INVOKEINTERFACE) {
             return null;
@@ -143,7 +148,7 @@ public final class LvtSuggester {
         }
 
         return this.assignmentSuggester.suggestNameFromAssignment(
-                (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
+                enclosingMethodNode, (AsmClassData) owner, (AsmMethodData) method, methodInsnNode);
     }
 
     private static @Nullable MethodData findMethod(
