@@ -68,6 +68,9 @@ class LvtAssignmentSuggesterTest {
     private RootLvtSuggester suggester;
 
     @Mock
+    private ClassDataProvider provider;
+
+    @Mock
     private ClassData listClass;
 
     @Mock
@@ -81,15 +84,14 @@ class LvtAssignmentSuggesterTest {
 
     @BeforeEach
     void setup() throws Exception {
-        final ClassDataProvider provider = mock(LENIENT);
         final HypoContext context =
-                HypoContext.builder().withContextProviders(provider).build();
+                HypoContext.builder().withContextProviders(this.provider).build();
 
-        when(provider.findClass("java/util/List")).thenReturn(this.listClass);
-        when(provider.findClass("java/util/Set")).thenReturn(this.setClass);
-        when(provider.findClass("java/util/Map")).thenReturn(this.mapClass);
+        when(this.provider.findClass("java/util/List")).thenReturn(this.listClass);
+        when(this.provider.findClass("java/util/Set")).thenReturn(this.setClass);
+        when(this.provider.findClass("java/util/Map")).thenReturn(this.mapClass);
 
-        when(provider.findClass(RANDOM_SOURCE_TYPE.asInternalName())).thenReturn(this.randomSourceClass);
+        when(this.provider.findClass(RANDOM_SOURCE_TYPE.asInternalName())).thenReturn(this.randomSourceClass);
 
         when(this.randomSourceClass.name()).thenReturn(RANDOM_SOURCE_TYPE.asInternalName());
 
