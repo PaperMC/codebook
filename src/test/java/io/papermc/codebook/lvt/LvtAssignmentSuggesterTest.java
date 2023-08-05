@@ -23,6 +23,7 @@
 package io.papermc.codebook.lvt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -42,6 +43,7 @@ import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.HashMap;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,7 +106,9 @@ class LvtAssignmentSuggesterTest {
         final AsmMethodData method = mock(LENIENT);
         final ContainerContext context = mock(LENIENT);
 
-        when(owner.kind()).thenReturn(ClassKind.CLASS);
+        when(owner.is(any())).thenCallRealMethod();
+
+        when(owner.kinds()).thenReturn(EnumSet.of(ClassKind.CLASS));
         when(owner.name()).thenReturn(methodOwner);
         when(method.name()).thenReturn(methodName);
 
