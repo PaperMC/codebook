@@ -51,11 +51,13 @@ import org.junit.jupiter.params.provider.CsvFileSource;
 import org.mockito.Mock;
 import org.mockito.MockSettings;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.MethodInsnNode;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class LvtAssignmentSuggesterTest {
 
     static final JvmType RANDOM_SOURCE_TYPE = new ClassType("net/minecraft/util/RandomSource");
@@ -63,7 +65,16 @@ class LvtAssignmentSuggesterTest {
     private static final MockSettings LENIENT = withSettings().strictness(Strictness.LENIENT);
     private RootLvtSuggester suggester;
 
-    @Mock(strictness = Mock.Strictness.LENIENT)
+    @Mock
+    private ClassData listClass;
+
+    @Mock
+    private ClassData setClass;
+
+    @Mock
+    private ClassData mapClass;
+
+    @Mock
     private ClassData randomSourceClass;
 
     @BeforeEach
@@ -72,11 +83,15 @@ class LvtAssignmentSuggesterTest {
         final HypoContext context =
                 HypoContext.builder().withContextProviders(provider).build();
 
+        when(provider.findClass("java/util/List")).thenReturn(this.listClass);
+        when(provider.findClass("java/util/Set")).thenReturn(this.setClass);
+        when(provider.findClass("java/util/Map")).thenReturn(this.mapClass);
+
         when(provider.findClass(RANDOM_SOURCE_TYPE.asInternalName())).thenReturn(this.randomSourceClass);
 
         when(this.randomSourceClass.name()).thenReturn(RANDOM_SOURCE_TYPE.asInternalName());
 
-        this.suggester = new RootLvtSuggester(context, new HashMap<>());
+        this.suggester = new RootLvtSuggester(context, new LvtTypeSuggester(context), new HashMap<>());
     }
 
     @ParameterizedTest

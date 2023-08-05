@@ -31,14 +31,30 @@ import dev.denwav.hypo.model.data.types.JvmType;
 import dev.denwav.hypo.model.data.types.PrimitiveType;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class LvtTypeSuggester {
 
-    private LvtTypeSuggester() {}
+    private final ClassData listClass;
+    private final ClassData setClass;
+    private final ClassData mapClass;
 
-    public static String suggestNameFromType(final @Nullable HypoContext context, final JvmType type)
-            throws IOException {
+    private final HypoContext context;
+
+    public LvtTypeSuggester(final HypoContext context) throws IOException {
+        this.context = context;
+
+        final @Nullable ClassData list = context.getContextProvider().findClass("java/util/List");
+        final @Nullable ClassData set = context.getContextProvider().findClass("java/util/Set");
+        final @Nullable ClassData map = context.getContextProvider().findClass("java/util/Map");
+
+        this.listClass = Objects.requireNonNull(list, "java/util/List not found");
+        this.setClass = Objects.requireNonNull(set, "java/util/Set not found");
+        this.mapClass = Objects.requireNonNull(map, "java/util/Map not found");
+    }
+
+    public String suggestNameFromType(final JvmType type) throws IOException {
         if (type instanceof PrimitiveType) {
             return switch ((PrimitiveType) type) {
                 case CHAR -> "c";
@@ -52,7 +68,7 @@ public final class LvtTypeSuggester {
                 case VOID -> throw new IllegalStateException("Illegal local variable type: " + type);
             };
         } else if (type instanceof ClassType) {
-            return suggestNameFromClassType(context, (ClassType) type);
+            return this.suggestNameFromClassType((ClassType) type);
         } else if (type instanceof ArrayType) {
             final JvmType baseType = ((ArrayType) type).baseType();
             if (baseType instanceof PrimitiveType) {
@@ -68,15 +84,14 @@ public final class LvtTypeSuggester {
                     case VOID -> throw new IllegalStateException("Illegal local variable type: " + type);
                 };
             } else {
-                return suggestNameFromType(context, baseType) + "s";
+                return this.suggestNameFromType(baseType) + "s";
             }
         } else {
             throw new IllegalStateException("Unknown type: " + type);
         }
     }
 
-    private static String suggestNameFromClassType(final @Nullable HypoContext context, final ClassType type)
-            throws IOException {
+    private String suggestNameFromClassType(final ClassType type) throws IOException {
         final String name = type.asInternalName();
         if (name.equals("Ljava/lang/String;")) {
             return "string";
@@ -87,23 +102,14 @@ public final class LvtTypeSuggester {
         }
 
         // TODO Try to determine name from signature, rather than just descriptor
-        if (context != null) {
-            final @Nullable ClassData typeClass = context.getContextProvider().findClass(type);
-            if (typeClass != null) {
-                @Nullable
-                final ClassData listClass = context.getContextProvider().findClass("java/util/List");
-                @Nullable
-                final ClassData setClass = context.getContextProvider().findClass("java/util/Set");
-                @Nullable
-                final ClassData mapClass = context.getContextProvider().findClass("java/util/Map");
-
-                if (listClass != null && typeClass.doesImplement(listClass)) {
-                    return "list";
-                } else if (setClass != null && typeClass.doesImplement(setClass)) {
-                    return "set";
-                } else if (mapClass != null && typeClass.doesImplement(mapClass)) {
-                    return "map";
-                }
+        final @Nullable ClassData typeClass = context.getContextProvider().findClass(type);
+        if (typeClass != null) {
+            if (typeClass.doesExtendOrImplement(this.listClass)) {
+                return "list";
+            } else if (typeClass.doesExtendOrImplement(this.setClass)) {
+                return "set";
+            } else if (typeClass.doesExtendOrImplement(this.mapClass)) {
+                return "map";
             }
         }
 

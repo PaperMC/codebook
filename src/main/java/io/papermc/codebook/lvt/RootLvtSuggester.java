@@ -80,11 +80,16 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
             GenericSuggester.class);
 
     private final HypoContext hypoContext;
+    private final LvtTypeSuggester lvtTypeSuggester;
     public final Map<String, AtomicInteger> missedNameSuggestions;
     private final List<? extends LvtSuggester> suggesters;
 
-    public RootLvtSuggester(final HypoContext hypoContext, final Map<String, AtomicInteger> missedNameSuggestions) {
+    public RootLvtSuggester(
+            final HypoContext hypoContext,
+            final LvtTypeSuggester lvtTypeSuggester,
+            final Map<String, AtomicInteger> missedNameSuggestions) {
         this.hypoContext = hypoContext;
+        this.lvtTypeSuggester = lvtTypeSuggester;
         this.missedNameSuggestions = missedNameSuggestions;
         final Injector injector = Guice.createInjector(this);
         this.suggesters = SUGGESTERS.stream().map(injector::getInstance).toList();
@@ -93,6 +98,7 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
     @Override
     protected void configure() {
         this.bind(HypoContext.class).toInstance(this.hypoContext);
+        this.bind(LvtTypeSuggester.class).toInstance(this.lvtTypeSuggester);
     }
 
     public String suggestName(
@@ -139,7 +145,7 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
 
         // we couldn't determine a name from the assignment, so determine a name from the type
         final JvmType lvtType = toJvmType(lvt.desc);
-        return determineFinalName(LvtTypeSuggester.suggestNameFromType(this.hypoContext, lvtType), scopedNames);
+        return determineFinalName(this.lvtTypeSuggester.suggestNameFromType(lvtType), scopedNames);
     }
 
     public static String determineFinalName(final String suggestedName, final Set<String> scopedNames) {

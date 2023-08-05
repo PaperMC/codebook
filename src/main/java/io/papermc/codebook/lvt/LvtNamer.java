@@ -57,16 +57,16 @@ public class LvtNamer {
 
     public static final HypoKey<Set<String>> SCOPED_NAMES = HypoKey.create("Scoped Names");
 
-    private final HypoContext context;
     private final MappingSet mappings;
-    private final RootLvtSuggester lvtSuggester;
+    private final LvtTypeSuggester lvtTypeSuggester;
+    private final RootLvtSuggester lvtAssignSuggester;
 
     public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
 
     public LvtNamer(final HypoContext context, final MappingSet mappings) throws IOException {
         this.mappings = mappings;
-        this.context = context;
-        this.lvtSuggester = new RootLvtSuggester(context, this.missedNameSuggestions);
+        this.lvtTypeSuggester = new LvtTypeSuggester(context);
+        this.lvtAssignSuggester = new RootLvtSuggester(context, this.lvtTypeSuggester, this.missedNameSuggestions);
     }
 
     public void processClass(final AsmClassData classData) throws IOException {
@@ -208,7 +208,7 @@ public class LvtNamer {
                         .orElse(null);
 
                 if (paramName == null) {
-                    paramName = LvtTypeSuggester.suggestNameFromType(this.context, paramTypes.get(i));
+                    paramName = this.lvtTypeSuggester.suggestNameFromType(paramTypes.get(i));
                 }
 
                 final String finalName = RootLvtSuggester.determineFinalName(paramName, scopedNames);
@@ -315,8 +315,9 @@ public class LvtNamer {
                 mappedName = RootLvtSuggester.determineFinalName(paramName, scopedNames);
             }
 
-            final String selectedName =
-                    mappedName != null ? mappedName : this.lvtSuggester.suggestName(method, node, lvt, scopedNames);
+            final String selectedName = mappedName != null
+                    ? mappedName
+                    : this.lvtAssignSuggester.suggestName(method, node, lvt, scopedNames);
 
             lvt.name = selectedName;
             usedNames[usedNameIndex++] = new UsedLvtName(lvt.name, lvt.desc, lvt.index);

@@ -47,10 +47,12 @@ import org.objectweb.asm.tree.FieldInsnNode;
 public class SingleVerbBooleanSuggester implements LvtSuggester {
 
     private final HypoContext hypoContext;
+    private final LvtTypeSuggester lvtTypeSuggester;
 
     @Inject
-    SingleVerbBooleanSuggester(final HypoContext hypoContext) {
+    SingleVerbBooleanSuggester(final HypoContext hypoContext, final LvtTypeSuggester lvtTypeSuggester) {
         this.hypoContext = hypoContext;
+        this.lvtTypeSuggester = lvtTypeSuggester;
     }
 
     @Override
@@ -97,7 +99,7 @@ public class SingleVerbBooleanSuggester implements LvtSuggester {
             if ("Lnet/minecraft/tags/TagKey;".equals(paramTypeDesc)) { // isTag is better than isTagKey
                 return "isTag";
             }
-            final String typeName = LvtTypeSuggester.suggestNameFromType(this.hypoContext, toJvmType(paramTypeDesc));
+            final String typeName = this.lvtTypeSuggester.suggestNameFromType(toJvmType(paramTypeDesc));
             return prefix + capitalize(typeName, 0);
         }
     }
