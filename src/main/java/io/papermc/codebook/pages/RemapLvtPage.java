@@ -26,53 +26,42 @@ import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.HypoModelUtil;
 import dev.denwav.hypo.model.data.ClassData;
-import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.lvt.LvtNamer;
+import io.papermc.codebook.report.Reports;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.cadixdev.lorenz.MappingSet;
 
 public final class RemapLvtPage extends CodeBookPage {
 
     private final HypoContext context;
     private final MappingSet paramMappings;
-    private final boolean logMissingLvtSuggestions;
+    private final Reports reports;
 
     @Inject
     public RemapLvtPage(
             @Hypo final HypoContext hypoContext,
             @ParamMappings final MappingSet paramMappings,
-            @Context final CodeBookContext context) {
+            @Report final Reports reports) {
         this.context = hypoContext;
         this.paramMappings = paramMappings;
-        this.logMissingLvtSuggestions = context.logMissingLvtSuggestions();
+        this.reports = reports;
     }
 
     @Override
     public void exec() {
         final LvtNamer lvtNamer;
         try {
-            lvtNamer = new LvtNamer(this.context, this.paramMappings);
+            lvtNamer = new LvtNamer(this.context, this.paramMappings, this.reports);
         } catch (final IOException e) {
             throw new UnexpectedException("Failed to create LVT namer", e);
         }
 
         this.remapLvt(lvtNamer);
-
-        if (this.logMissingLvtSuggestions) {
-            final var comparator = Comparator.<Map.Entry<String, AtomicInteger>, Integer>comparing(
-                    e -> e.getValue().get());
-            lvtNamer.missedNameSuggestions.entrySet().stream()
-                    .sorted(comparator.reversed())
-                    .forEach(s -> System.out.println("missed: " + s.getKey() + " -- " + s.getValue() + " times"));
-        }
     }
 
     private void remapLvt(final LvtNamer lvtNamer) {

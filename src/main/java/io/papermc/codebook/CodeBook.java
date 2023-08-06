@@ -43,6 +43,7 @@ import io.papermc.codebook.pages.RemapJarPage;
 import io.papermc.codebook.pages.RemapLvtPage;
 import io.papermc.codebook.pages.UnpickPage;
 import io.papermc.codebook.util.IOUtil;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -95,6 +96,13 @@ public final class CodeBook {
         }
 
         IOUtil.move(resultJar, this.ctx.outputJar());
+        if (this.ctx.reports() != null) {
+            try {
+                this.ctx.reports().generateReports();
+            } catch (final IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private static Injector injector(final Module module) {
@@ -171,6 +179,13 @@ public final class CodeBook {
                     this.bind(CodeBookPage.ConstantsJar.KEY).toInstance(constantsJar);
                 } else {
                     this.bind(CodeBookPage.ConstantsJar.KEY).toProvider(Providers.of(null));
+                }
+
+                if (CodeBook.this.ctx.reports() != null) {
+                    this.bind(CodeBookPage.Report.KEY).toInstance(CodeBook.this.ctx.reports());
+                    this.install(CodeBook.this.ctx.reports());
+                } else {
+                    this.bind(CodeBookPage.Report.KEY).toProvider(Providers.of(null));
                 }
             }
         };

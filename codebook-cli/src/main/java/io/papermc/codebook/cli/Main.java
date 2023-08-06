@@ -32,12 +32,15 @@ import io.papermc.codebook.config.CodeBookResource;
 import io.papermc.codebook.config.CodeBookUriResource;
 import io.papermc.codebook.config.CodeBookVersionInput;
 import io.papermc.codebook.exceptions.UserErrorException;
+import io.papermc.codebook.report.ReportType;
+import io.papermc.codebook.report.Reports;
 import io.papermc.codebook.util.Downloader;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.zip.ZipFile;
@@ -58,6 +61,39 @@ import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J;
         sortOptions = false,
         usageHelpAutoWidth = true)
 public final class Main implements Callable<Integer> {
+
+    @CommandLine.ArgGroup(multiplicity = "1", exclusive = false)
+    private @Nullable ReportOptions reports;
+
+    static final class ReportOptions {
+
+        @CommandLine.Option(
+                names = "--reports-dir",
+                paramLabel = "<reports-dir>",
+                description = "Parent directory to output any generated reports",
+                hidden = true)
+        private @Nullable Path reportsDir;
+
+        @CommandLine.ArgGroup(multiplicity = "1")
+        private SelectedReports selectedReports;
+
+        static final class SelectedReports {
+
+            @CommandLine.Option(
+                    names = "--report",
+                    paramLabel = "<report>",
+                    description = "Set of report types to generate",
+                    hidden = true)
+            private Set<ReportType> reports;
+
+            @CommandLine.Option(
+                    names = "--all-reports",
+                    paramLabel = "<all-reports>",
+                    description = "Generate all reports",
+                    hidden = true)
+            private boolean allReports;
+        }
+    }
 
     @CommandLine.ArgGroup(
             multiplicity = "1",
@@ -86,13 +122,6 @@ public final class Main implements Callable<Integer> {
                 description =
                         "A download URL for the executable AutoRenamingTool jar to use for the remapping process.")
         private @Nullable URI remapperUri;
-
-        @CommandLine.Option(
-                names = "--log-missing-lvt-suggestions",
-                paramLabel = "<log-missing-lvt-suggestions>",
-                description = "Include a report of missing lvt name suggestions in the remapping log",
-                hidden = true)
-        private boolean logMissingLvtSuggestions;
     }
 
     @CommandLine.ArgGroup(
@@ -421,6 +450,17 @@ public final class Main implements Callable<Integer> {
                     return new Coords(c.constantsCoords, "constants", null, this.unpickMavenBaseUrl);
                 });
 
+        @Nullable Reports reports = null;
+        if (this.reports != null && this.reports.reportsDir != null) {
+            final Set<ReportType> reportsToGenerate;
+            if (this.reports.selectedReports.allReports) {
+                reportsToGenerate = Set.of(ReportType.values());
+            } else {
+                reportsToGenerate = this.reports.selectedReports.reports;
+            }
+            reports = new Reports(this.reports.reportsDir, reportsToGenerate);
+        }
+
         return CodeBookContext.builder()
                 .remapperJar(remapper)
                 .mappings(mappings)
@@ -430,7 +470,7 @@ public final class Main implements Callable<Integer> {
                 .outputJar(this.outputJar)
                 .overwrite(this.forceWrite)
                 .input(input)
-                .logMissingLvtSuggestions(this.remapper.logMissingLvtSuggestions)
+                .reports(reports)
                 .build();
     }
 
