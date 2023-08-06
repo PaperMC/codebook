@@ -49,11 +49,11 @@ import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import io.papermc.codebook.lvt.suggestion.numbers.MthRandomSuggester;
 import io.papermc.codebook.lvt.suggestion.numbers.RandomSourceSuggester;
+import io.papermc.codebook.report.Reports;
+import io.papermc.codebook.report.type.MissingMethodLvtSuggestion;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -81,18 +81,15 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
 
     private final HypoContext hypoContext;
     private final LvtTypeSuggester lvtTypeSuggester;
-    public final Map<String, AtomicInteger> missedNameSuggestions;
+    private final Injector injector;
     private final List<? extends LvtSuggester> suggesters;
 
     public RootLvtSuggester(
-            final HypoContext hypoContext,
-            final LvtTypeSuggester lvtTypeSuggester,
-            final Map<String, AtomicInteger> missedNameSuggestions) {
+            final HypoContext hypoContext, final LvtTypeSuggester lvtTypeSuggester, final Reports reports) {
         this.hypoContext = hypoContext;
         this.lvtTypeSuggester = lvtTypeSuggester;
-        this.missedNameSuggestions = missedNameSuggestions;
-        final Injector injector = Guice.createInjector(this);
-        this.suggesters = SUGGESTERS.stream().map(injector::getInstance).toList();
+        this.injector = Guice.createInjector(this, reports);
+        this.suggesters = SUGGESTERS.stream().map(this.injector::getInstance).toList();
     }
 
     @Override
@@ -207,11 +204,9 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
                 return suggestion;
             }
         }
-        this.missedNameSuggestions
-                .computeIfAbsent(
-                        call.data().name() + "," + insn.owner().name() + "," + insn.node().desc,
-                        (k) -> new AtomicInteger(0))
-                .incrementAndGet();
+        this.injector
+                .getInstance(MissingMethodLvtSuggestion.class)
+                .reportMissingMethodLvtSuggestion(call.data(), insn.node());
         return null;
     }
 

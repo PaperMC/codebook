@@ -10,6 +10,7 @@ dependencies {
     api(libs.checker)
 
     implementation(projects.codebookLvt)
+    api(projects.codebookReports)
 
     implementation(libs.guice)
     implementation(libs.inject)

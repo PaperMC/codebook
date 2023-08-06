@@ -22,6 +22,7 @@
 
 package io.papermc.codebook.config;
 
+import io.papermc.codebook.report.Reports;
 import io.soabase.recordbuilder.core.RecordBuilder;
 import java.nio.file.Path;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -41,7 +42,7 @@ public record CodeBookContext(
         @NotNull Path outputJar,
         boolean overwrite,
         @NotNull CodeBookInput input,
-        boolean logMissingLvtSuggestions) {
+        @Nullable @org.jetbrains.annotations.Nullable Reports reports) {
 
     public static CodeBookContextBuilder builder() {
         return CodeBookContextBuilder.builder();
