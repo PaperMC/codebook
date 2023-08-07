@@ -89,10 +89,10 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
     private final List<? extends LvtSuggester> suggesters;
 
     public RootLvtSuggester(
-            final HypoContext hypoContext, final LvtTypeSuggester lvtTypeSuggester, final Reports reports) {
+            final HypoContext hypoContext, final LvtTypeSuggester lvtTypeSuggester, final Injector reports) {
         this.hypoContext = hypoContext;
         this.lvtTypeSuggester = lvtTypeSuggester;
-        this.injector = Guice.createInjector(this, reports);
+        this.injector = reports.createChildInjector(this);
         this.suggesters = SUGGESTERS.stream().map(this.injector::getInstance).toList();
     }
 
