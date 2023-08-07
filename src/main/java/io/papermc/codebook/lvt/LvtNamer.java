@@ -30,6 +30,7 @@ import dev.denwav.hypo.hydrate.generic.HypoHydration;
 import dev.denwav.hypo.hydrate.generic.LambdaClosure;
 import dev.denwav.hypo.hydrate.generic.LocalClassClosure;
 import dev.denwav.hypo.model.data.ClassData;
+import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.HypoKey;
 import dev.denwav.hypo.model.data.MethodData;
@@ -46,6 +47,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntUnaryOperator;
+import java.util.regex.Pattern;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.model.Mapping;
 import org.cadixdev.lorenz.model.MethodMapping;
@@ -63,6 +66,7 @@ public class LvtNamer {
     private final RootLvtSuggester lvtAssignSuggester;
 
     public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
+    public final Map<ClassData, List<String>> missingParams = new ConcurrentHashMap<>();
 
     public LvtNamer(final HypoContext context, final MappingSet mappings) throws IOException {
         this.mappings = mappings;
@@ -90,6 +94,31 @@ public class LvtNamer {
         }
     }
 
+    private void checkMappings(final MethodData method, final @Nullable MethodMapping methodMapping, final int descriptorParamOffset, final IntUnaryOperator descriptorToMappingOffset) throws IOException {
+        this.checkMappings(method, methodMapping, descriptorParamOffset, descriptorToMappingOffset, null);
+    }
+    private void checkMappings(final MethodData method, final @Nullable MethodMapping methodMapping, final int descriptorParamOffset, final IntUnaryOperator descriptorToMappingOffset, final @Nullable LambdaClosure lambdaClosure) throws IOException {
+        if (method.params().size() == descriptorParamOffset) {
+            return;
+        }
+        final ClassData parentClass = method.parentClass();
+        if (methodMapping == null || (method.params().size() - descriptorParamOffset > methodMapping.getParameterMappings().size())) { // != should be sufficient here, but hypo's CopyMappingsDown for constructors incorrectly applies mappings to implicit constructor params
+            final StringBuilder msg = new StringBuilder("\t#%s %s".formatted( method.name(), method.descriptorText()));
+            if (lambdaClosure != null) {
+                final MethodData containingMethod = lambdaClosure.getContainingMethod();
+                msg.append("%n\t\tLambda Source: %s#%s %s".formatted(containingMethod.parentClass().equals(parentClass) ? "" : containingMethod.parentClass().name(), containingMethod.name(), containingMethod.descriptorText()));
+            }
+            for (int i = descriptorParamOffset; i < method.params().size(); i++) {
+                final int paramIdx = i;
+                final int lastIdxOfDot = method.param(i ).toString().lastIndexOf('.');
+                msg.append("%n\t\t%s\t%-50s\t%s".formatted(i, method.param(i).toString().substring(lastIdxOfDot + 1), Optional.ofNullable(methodMapping).flatMap(m -> m.getParameterMapping(descriptorToMappingOffset.applyAsInt(paramIdx))).map(Mapping::getDeobfuscatedName).orElse("<<MISSING>>")));
+            }
+            this.missingParams.computeIfAbsent(parentClass, ignored -> new ArrayList<>()).add(msg.toString());
+        }
+    }
+
+    private static final Pattern ANONYMOUS_CLASS = Pattern.compile(".+\\$\\d+$");
+
     private void fillNames0(final MethodData method) throws IOException {
         final @Nullable Set<String> names = method.get(SCOPED_NAMES);
         if (names != null) {
@@ -101,6 +130,7 @@ public class LvtNamer {
         // If it does, we need to keep track of the LVTs we inherit
         @Nullable AsmMethodData outerMethod = null;
         int @Nullable [] outerMethodParamLvtIndices = null;
+        @Nullable LambdaClosure lambdaClosure = null;
         final @Nullable List<LambdaClosure> lambdaCalls = method.get(HypoHydration.LAMBDA_CALLS);
         // Only track synthetic, non-synthetic means a method reference which does not behave as a closure (does not
         // capture LVT)
@@ -116,6 +146,7 @@ public class LvtNamer {
                         continue;
                     }
                     outerMethodParamLvtIndices = lambdaCall.getParamLvtIndices();
+                    lambdaClosure = lambdaCall;
                     // there can only be 1 outer method
                     break;
                 }
@@ -188,6 +219,55 @@ public class LvtNamer {
         final Optional<MethodMapping> methodMapping = this.mappings
                 .getClassMapping(parentClass.name())
                 .flatMap(c -> c.getMethodMapping(method.name(), method.descriptorText()));
+
+        final @Nullable ClassData superClass = parentClass.superClass();
+
+        final boolean skipMapping;
+        if (method.name().startsWith("access$") && method.isSynthetic()) { // never in source
+            skipMapping = true;
+        } else if (method.name().startsWith("lambda$") && method.isSynthetic() && (lambdaCalls == null || lambdaCalls.isEmpty())) { // lambdas that had their use stripped by mojang
+            skipMapping = true;
+        } else if (superClass != null && superClass.name().equals("java/lang/Enum") && method.name().equals("valueOf") && method.descriptorText().startsWith("(Ljava/lang/String;)")) { // created by the compiler
+            skipMapping = true;
+        } else if (parentClass.is(ClassKind.RECORD) && method.name().equals("equals") && method.descriptorText().equals("(Ljava/lang/Object;)Z")) { // created by the compiler
+            skipMapping = true;
+        } else if (method.isSynthetic() && method.get(HypoHydration.SYNTHETIC_TARGET) != null) { // don't trust isBridge, apparently it's not always accurate
+            skipMapping = true;
+        } else {
+            skipMapping = false;
+        }
+
+        if (!skipMapping) {
+            if (method.isConstructor()) {
+                if (parentClass.is(ClassKind.ENUM)) {
+                    this.checkMappings(method, methodMapping.orElse(null), 2, i -> i + 1); // enum constructors include name and ordinal
+                } else {
+                    if (!ANONYMOUS_CLASS.matcher(parentClass.name()).matches()) { // anonymous classes cannot have constructors in source
+                        if (parentClass.outerClass() != null) {
+                            if (localClassClosure == null) {
+                                this.checkMappings(method, methodMapping.orElse(null), parentClass.isStaticInnerClass() ? 0 : 1, i -> i + 1);
+                            } else {
+                                this.checkMappings(method, methodMapping.orElse(null), (parentClass.isStaticInnerClass() ? 0 : 1) + localClassClosure.getParamLvtIndices().length, i -> i + 1);
+                            }
+                        } else {
+                            this.checkMappings(method, methodMapping.orElse(null), 0, i -> i + 1);
+                        }
+                    }
+                }
+            } else {
+                if (outerMethodParamLvtIndices == null) {
+                    this.checkMappings(method, methodMapping.orElse(null), 0, i -> i + (method.isStatic() ? 0 : 1));
+                } else {
+                    final int descriptorOffset;
+                    if (!method.isStatic() && outerMethodParamLvtIndices.length > 0 && outerMethodParamLvtIndices[0] == 0) {
+                        descriptorOffset = outerMethodParamLvtIndices.length - 1;
+                    } else {
+                        descriptorOffset = outerMethodParamLvtIndices.length;
+                    }
+                    this.checkMappings(method, methodMapping.orElse(null), descriptorOffset, i -> i + (method.isStatic() ? 0 : 1), lambdaClosure);
+                }
+            }
+        }
 
         // If there's no LVT table there's nothing for us to process
         if (node.localVariables == null) {

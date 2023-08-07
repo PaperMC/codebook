@@ -26,6 +26,7 @@ import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.HypoModelUtil;
 import dev.denwav.hypo.model.data.ClassData;
+import dev.denwav.hypo.model.data.MethodData;
 import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.lvt.LvtNamer;
@@ -34,6 +35,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -72,6 +74,15 @@ public final class RemapLvtPage extends CodeBookPage {
             lvtNamer.missedNameSuggestions.entrySet().stream()
                     .sorted(comparator.reversed())
                     .forEach(s -> System.out.println("missed: " + s.getKey() + " -- " + s.getValue() + " times"));
+        }
+
+        if (false) {
+            lvtNamer.missingParams.entrySet().stream()
+                    .sorted(Comparator.comparing(entry -> entry.getKey().name()))
+                    .forEach(entry -> {
+                        System.out.printf("Missing param mappings in %s, Method Count: %s, Param Count: TODO%n", entry.getKey().name(), entry.getValue().size());
+                        entry.getValue().forEach(System.out::println);
+                    });
         }
     }
 
