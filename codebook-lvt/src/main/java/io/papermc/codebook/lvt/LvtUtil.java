@@ -24,7 +24,6 @@ package io.papermc.codebook.lvt;
 
 import dev.denwav.hypo.asm.HypoAsmUtil;
 import dev.denwav.hypo.model.data.types.JvmType;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -54,7 +53,14 @@ public final class LvtUtil {
     }
 
     public static Predicate<String> equalsAny(final String... strings) {
-        return s -> Arrays.stream(strings).anyMatch(Predicate.isEqual(s));
+        return s -> {
+            for (final String string : strings) {
+                if (string.equals(s)) {
+                    return true;
+                }
+            }
+            return false;
+        };
     }
 
     public static String findNextWord(final int start, final String str) {

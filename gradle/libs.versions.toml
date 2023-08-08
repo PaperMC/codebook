@@ -30,6 +30,7 @@ sysoutOverSlf4j = "uk.org.lidalia:sysout-over-slf4j:1.0.2"
 
 guice = "com.google.inject:guice:7.0.0"
 inject = "jakarta.inject:jakarta.inject-api:2.0.1"
+guava = "com.google.guava:guava:32.1.2-jre"
 
 gson = "com.google.code.gson:gson:2.10.1"
 bytes = "at.favre.lib:bytes:1.6.1"
@@ -66,4 +67,6 @@ mockito-junit = { module = "org.mockito:mockito-junit-jupiter", version.ref = "m
 
 [bundles]
 asm = ["asm", "asm-util", "asm-tree"]
-hypo = ["hypo-model", "hypo-core", "hypo-asm", "hypo-hydrate", "hypo-asm-hydrate", "hypo-mappings"]
+hypo-base = ["hypo-model", "hypo-core"]
+hypo-impl = ["hypo-asm", "hypo-hydrate", "hypo-asm-hydrate"]
+hypo-full = ["hypo-model", "hypo-core", "hypo-asm", "hypo-hydrate", "hypo-asm-hydrate", "hypo-mappings"]

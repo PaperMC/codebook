@@ -24,7 +24,6 @@ package io.papermc.codebook.pages;
 
 import com.google.common.collect.Iterables;
 import dev.denwav.hypo.asm.AsmClassData;
-import dev.denwav.hypo.asm.AsmConstructorData;
 import dev.denwav.hypo.asm.AsmFieldData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
@@ -149,15 +148,7 @@ public final class FixJarPage extends CodeBookPage {
 
         private static void addAnnotations(final AsmClassData classData) {
             for (final MethodData method : classData.methods()) {
-                final MethodNode node;
-                if (method instanceof final AsmMethodData asm) {
-                    node = asm.getNode();
-                } else if (method instanceof final AsmConstructorData asm) {
-                    node = asm.getNode();
-                } else {
-                    // should never happen
-                    throw new IllegalStateException("Unknown type: " + method.getClass());
-                }
+                final MethodNode node = ((AsmMethodData) method).getNode();
 
                 if ((node.access & Opcodes.ACC_DEPRECATED) != 0) {
                     final var annoClass = "Ljava/lang/Deprecated;";

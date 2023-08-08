@@ -28,7 +28,6 @@ import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.types.ClassType;
 import dev.denwav.hypo.model.data.types.JvmType;
-import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.lvt.suggestion.LvtSuggester;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
@@ -48,7 +47,7 @@ public class RandomSourceSuggester implements LvtSuggester {
     RandomSourceSuggester(final HypoContext hypoContext) throws IOException {
         final @Nullable ClassData random = hypoContext.getContextProvider().findClass(RANDOM_SOURCE_TYPE);
         if (random == null) {
-            throw new UnexpectedException("Cannot find " + RANDOM_SOURCE_TYPE + " on the classpath.");
+            throw new IllegalStateException("Cannot find " + RANDOM_SOURCE_TYPE + " on the classpath.");
         }
         this.randomSourceClass = random;
     }

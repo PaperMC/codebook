@@ -9,8 +9,11 @@ plugins {
 dependencies {
     api(libs.checker)
 
+    implementation(projects.codebookLvt)
+
     implementation(libs.guice)
     implementation(libs.inject)
+    implementation(libs.guava)
 
     implementation(libs.gson)
     implementation(libs.bytes)
@@ -20,7 +23,7 @@ dependencies {
     implementation(libs.unpick.cli)
 
     implementation(platform(libs.hypo.platform))
-    implementation(libs.bundles.hypo)
+    implementation(libs.bundles.hypo.full)
 
     implementation(libs.lorenz)
 
@@ -36,6 +39,12 @@ dependencies {
 
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit)
+}
+
+tasks.jar {
+    manifest {
+        attributes("Automatic-Module-Name" to "io.papermc.codebook")
+    }
 }
 
 publishing {

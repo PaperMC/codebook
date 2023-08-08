@@ -23,7 +23,6 @@
 package io.papermc.codebook.lvt;
 
 import dev.denwav.hypo.asm.AsmClassData;
-import dev.denwav.hypo.asm.AsmConstructorData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.generic.HypoHydration;
@@ -122,13 +121,7 @@ public class LvtNamer {
             }
         }
 
-        final MethodNode node;
-        if (method instanceof AsmMethodData) {
-            node = ((AsmMethodData) method).getNode();
-        } else {
-            node = ((AsmConstructorData) method).getNode();
-        }
-
+        final MethodNode node = ((AsmMethodData) method).getNode();
         final ClassData parentClass = method.parentClass();
         // A method cannot be both a lambda expression and a local class, so if we've already determined an outer
         // method, there's nothing to do here.

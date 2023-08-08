@@ -5,5 +5,6 @@ pluginManagement {
 rootProject.name = "codebook"
 
 include("codebook-cli")
+include("codebook-lvt")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
