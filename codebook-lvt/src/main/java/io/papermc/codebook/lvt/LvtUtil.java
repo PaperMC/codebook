@@ -150,4 +150,16 @@ public final class LvtUtil {
         // myCoolAABBClass -> myCoolAabbClass
         return LvtUtil.pruneLeadingCapitals(name);
     }
+
+    @Nullable
+    public static String parseSimpleTypeNameFromMethod(final String methodName, int prefix) {
+        if (!Character.isUpperCase(methodName.charAt(prefix))) {
+            // If the char isn't uppercase, that means it isn't following the typical `lowerCamelCase`
+            // Java method naming scheme how we expect, so we can't be sure it means what we think it
+            // means in this instance
+            return null;
+        } else {
+            return LvtUtil.parseSimpleTypeName(methodName.substring(prefix));
+        }
+    }
 }
