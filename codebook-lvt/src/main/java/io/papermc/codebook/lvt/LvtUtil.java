@@ -41,6 +41,29 @@ public final class LvtUtil {
         return Character.toUpperCase(name.charAt(index)) + name.substring(index + 1);
     }
 
+    public static String pruneLeadingCapitals(final String name) {
+        boolean capturingGroup = true;
+        final StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < name.length(); i++) {
+            final char character = name.charAt(i);
+            if (Character.isUpperCase(character)) {
+                if (capturingGroup) {
+                    // Convert the leading capital to lowercase and append to the result
+                    result.append(Character.toLowerCase(character));
+                } else {
+                    capturingGroup = true;
+                    result.append(character);
+                }
+            } else {
+                capturingGroup = false;
+                result.append(character);
+            }
+        }
+
+        return result.toString();
+    }
+
     public static @Nullable String decapitalize(final String name, final int index) {
         if (!Character.isUpperCase(name.charAt(index))) {
             // If the char isn't uppercase, that means it isn't following the typical `lowerCamelCase`
@@ -107,5 +130,24 @@ public final class LvtUtil {
 
     public static boolean hasPrefix(final String text, final String prefix) {
         return text.length() > prefix.length() && text.startsWith(prefix);
+    }
+
+    public static String parseSimpleTypeName(final String simpleName) {
+        // Parse all capitalized types into lowercase
+        // UUID -> uuid
+        // AABB -> aabb
+        if (LvtUtil.isStringAllUppercase(simpleName)) {
+            return simpleName.toLowerCase();
+        }
+
+        // Proper case!
+        // HelloWorld -> helloWorld
+        // BigCrazy -> bigCrazy
+        final String name = Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
+
+        // Parse leading capitals
+        // abstractUUIDFix -> abstractUuidFix
+        // myCoolAABBClass -> myCoolAabbClass
+        return LvtUtil.pruneLeadingCapitals(name);
     }
 }
