@@ -22,14 +22,17 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
-import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
-import static io.papermc.codebook.lvt.LvtUtil.tryMatchPrefix;
-
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.LineNumberNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+
+import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
+import static io.papermc.codebook.lvt.LvtUtil.tryMatchPrefix;
 
 /*
 This matches against methods with a set prefix and trims that prefix off of the
@@ -49,6 +52,23 @@ public class SingleVerbSuggester implements LvtSuggester {
             return null;
         }
 
-        return decapitalize(methodName, prefix.length());
+        @Nullable String newName = this.handleForLoopPrefix(methodName, insn.node(), "getMin", "getMax");
+        if (newName == null) {
+            newName = this.handleForLoopPrefix(methodName, insn.node(), "getMax", "getMin");
+        }
+        return newName != null ? newName : decapitalize(methodName, prefix.length());
+    }
+
+    private @Nullable String handleForLoopPrefix(final String methodName, final MethodInsnNode methodInsnNode, final String first, final String second) {
+        if (methodName.startsWith(first)) {
+            @Nullable AbstractInsnNode nextInsn = methodInsnNode.getNext(); // look for getMin/MaxXXX call on the same line
+            while (nextInsn != null && !(nextInsn instanceof LineNumberNode)) {
+                if (nextInsn instanceof final MethodInsnNode afterMethodInvoke && afterMethodInvoke.name.startsWith(second)) {
+                    return decapitalize(methodName, first.length());
+                }
+                nextInsn = nextInsn.getNext();
+            }
+        }
+        return null;
     }
 }
