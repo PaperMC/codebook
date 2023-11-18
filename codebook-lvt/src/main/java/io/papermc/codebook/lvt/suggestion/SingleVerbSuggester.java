@@ -30,6 +30,9 @@ import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.LineNumberNode;
+import org.objectweb.asm.tree.MethodInsnNode;
 
 /*
 This matches against methods with a set prefix and trims that prefix off of the
@@ -49,6 +52,28 @@ public class SingleVerbSuggester implements LvtSuggester {
             return null;
         }
 
-        return parseSimpleTypeNameFromMethod(methodName, prefix.length());
+        final @Nullable String newName = handleForLoop(methodName, insn, "getMin", "getMax");
+        return newName != null ? newName : parseSimpleTypeNameFromMethod(methodName, prefix.length());
+    }
+
+    public static @Nullable String handleForLoop(final String methodName, final MethodInsnContext insn, final String minPrefix, final String maxPrefix) {
+        @Nullable String newName = handleForLoopPrefix(methodName, insn.node(), minPrefix, maxPrefix);
+        if (newName == null) {
+            newName = handleForLoopPrefix(methodName, insn.node(), maxPrefix, minPrefix);
+        }
+        return newName;
+    }
+
+    private static @Nullable String handleForLoopPrefix(final String methodName, final MethodInsnNode methodInsnNode, final String first, final String second) {
+        if (methodName.startsWith(first)) {
+            @Nullable AbstractInsnNode nextInsn = methodInsnNode.getNext(); // look for getMin/MaxXXX call on the same line
+            while (nextInsn != null && !(nextInsn instanceof LineNumberNode)) {
+                if (nextInsn instanceof final MethodInsnNode afterMethodInvoke && afterMethodInvoke.name.startsWith(second)) {
+                    return parseSimpleTypeNameFromMethod(methodName, first.length());
+                }
+                nextInsn = nextInsn.getNext();
+            }
+        }
+        return null;
     }
 }

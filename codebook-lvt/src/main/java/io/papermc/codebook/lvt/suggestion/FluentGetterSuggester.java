@@ -27,6 +27,7 @@ import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.IntPredicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -90,7 +91,8 @@ public class FluentGetterSuggester implements LvtSuggester {
             if (ignored.contains(name)) {
                 return null;
             }
-            return name;
+            final @Nullable String forLoopAdjustedName = SingleVerbSuggester.handleForLoop(name, insn, "min", "max");
+            return Objects.requireNonNullElse(forLoopAdjustedName, name);
         }
         return null;
     }
