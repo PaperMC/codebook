@@ -41,20 +41,23 @@ public class RandomSourceSuggester implements LvtSuggester {
 
     static final JvmType RANDOM_SOURCE_TYPE = new ClassType("net/minecraft/util/RandomSource");
 
-    private final ClassData randomSourceClass;
+    private final @Nullable ClassData randomSourceClass;
 
     @Inject
     RandomSourceSuggester(final HypoContext hypoContext) throws IOException {
-        final @Nullable ClassData random = hypoContext.getContextProvider().findClass(RANDOM_SOURCE_TYPE);
-        if (random == null) {
-            throw new IllegalStateException("Cannot find " + RANDOM_SOURCE_TYPE + " on the classpath.");
+        this.randomSourceClass = hypoContext.getContextProvider().findClass(RANDOM_SOURCE_TYPE);
+        if (this.randomSourceClass == null) {
+            System.err.println("Failed to find RandomSource class, disabling RandomSourceSuggester");
         }
-        this.randomSourceClass = random;
     }
 
     @Override
     public @Nullable String suggestFromMethod(
             final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
+        if (this.randomSourceClass == null) {
+            return null;
+        }
+
         final String methodName = call.data().name();
         ClassData ownerClass = insn.owner();
         if (ownerClass.doesExtendOrImplement(this.randomSourceClass)) {
