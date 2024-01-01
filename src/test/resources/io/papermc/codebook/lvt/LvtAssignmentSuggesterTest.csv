@@ -8,6 +8,7 @@ freeze,net/minecraft/core/RegistryAccess,()Lnet/minecraft/core/RegistryAccess.Fr
 getName,io/paper/Paper,()Ljava/lang/String;,name
 getSuperLongDumName,io/paper/Paper,()Ljava/lang/String;,superLongDumName
 getOrCreateSomething,io/paper/Paper,()Ljava/lang/String;,something
+getUUID,io/paper/Paper,()Ljava/util/UUID;,uuid
 # as
 asString,io/paper/Paper,()Ljava/lang/String;,string
 asLevel,io/paper/paper,()Lnet/minecraft/Level;,level

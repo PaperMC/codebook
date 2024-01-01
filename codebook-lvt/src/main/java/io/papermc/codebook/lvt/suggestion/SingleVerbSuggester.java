@@ -22,7 +22,7 @@
 
 package io.papermc.codebook.lvt.suggestion;
 
-import static io.papermc.codebook.lvt.LvtUtil.decapitalize;
+import static io.papermc.codebook.lvt.LvtUtil.parseSimpleTypeNameFromMethod;
 import static io.papermc.codebook.lvt.LvtUtil.tryMatchPrefix;
 
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
@@ -49,6 +49,6 @@ public class SingleVerbSuggester implements LvtSuggester {
             return null;
         }
 
-        return decapitalize(methodName, prefix.length());
+        return parseSimpleTypeNameFromMethod(methodName, prefix.length());
     }
 }
