@@ -42,9 +42,9 @@ import dev.denwav.hypo.model.data.types.JvmType;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
+import io.papermc.codebook.report.Reports;
 import java.io.IOException;
 import java.util.EnumSet;
-import java.util.HashMap;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -82,6 +82,9 @@ class LvtAssignmentSuggesterTest {
     @Mock
     private ClassData randomSourceClass;
 
+    @Mock
+    private Reports reports;
+
     @BeforeEach
     void setup() throws Exception {
         final HypoContext context =
@@ -95,7 +98,7 @@ class LvtAssignmentSuggesterTest {
 
         when(this.randomSourceClass.name()).thenReturn(RANDOM_SOURCE_TYPE.asInternalName());
 
-        this.suggester = new RootLvtSuggester(context, new LvtTypeSuggester(context), new HashMap<>());
+        this.suggester = new RootLvtSuggester(context, new LvtTypeSuggester(context), this.reports);
     }
 
     @ParameterizedTest
