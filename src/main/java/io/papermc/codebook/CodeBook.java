@@ -42,6 +42,7 @@ import io.papermc.codebook.pages.InspectJarPage;
 import io.papermc.codebook.pages.RemapJarPage;
 import io.papermc.codebook.pages.RemapLvtPage;
 import io.papermc.codebook.pages.UnpickPage;
+import io.papermc.codebook.report.Reports;
 import io.papermc.codebook.util.IOUtil;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -185,7 +186,8 @@ public final class CodeBook {
                     this.bind(CodeBookPage.Report.KEY).toInstance(CodeBook.this.ctx.reports());
                     this.install(CodeBook.this.ctx.reports());
                 } else {
-                    this.bind(CodeBookPage.Report.KEY).toProvider(Providers.of(null));
+                    this.bind(CodeBookPage.Report.KEY).toInstance(Reports.NOOP);
+                    this.install(Reports.NOOP);
                 }
             }
         };

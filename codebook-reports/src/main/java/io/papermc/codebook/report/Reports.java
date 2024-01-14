@@ -35,6 +35,19 @@ import java.util.Set;
 
 public class Reports extends AbstractModule {
 
+    @SuppressWarnings({"DataFlowIssue"})
+    public static final Reports NOOP = new Reports(null, Set.of()) {
+        @Override
+        public void generateReports() {
+            // NO-OP
+        }
+
+        @Override
+        protected void configure() {
+            // NO-OP
+        }
+    };
+
     private final Path reportsDir;
     private final Set<ReportType> typesToGenerate;
     private final Map<ReportType, Report> reports;
