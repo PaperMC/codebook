@@ -56,7 +56,8 @@ public class SingleVerbSuggester implements LvtSuggester {
         return newName != null ? newName : parseSimpleTypeNameFromMethod(methodName, prefix.length());
     }
 
-    public static @Nullable String handleForLoop(final String methodName, final MethodInsnContext insn, final String minPrefix, final String maxPrefix) {
+    public static @Nullable String handleForLoop(
+            final String methodName, final MethodInsnContext insn, final String minPrefix, final String maxPrefix) {
         @Nullable String newName = handleForLoopPrefix(methodName, insn.node(), minPrefix, maxPrefix);
         if (newName == null) {
             newName = handleForLoopPrefix(methodName, insn.node(), maxPrefix, minPrefix);
@@ -64,11 +65,14 @@ public class SingleVerbSuggester implements LvtSuggester {
         return newName;
     }
 
-    private static @Nullable String handleForLoopPrefix(final String methodName, final MethodInsnNode methodInsnNode, final String first, final String second) {
+    private static @Nullable String handleForLoopPrefix(
+            final String methodName, final MethodInsnNode methodInsnNode, final String first, final String second) {
         if (methodName.startsWith(first)) {
-            @Nullable AbstractInsnNode nextInsn = methodInsnNode.getNext(); // look for getMin/MaxXXX call on the same line
+            @Nullable
+            AbstractInsnNode nextInsn = methodInsnNode.getNext(); // look for getMin/MaxXXX call on the same line
             while (nextInsn != null && !(nextInsn instanceof LineNumberNode)) {
-                if (nextInsn instanceof final MethodInsnNode afterMethodInvoke && afterMethodInvoke.name.startsWith(second)) {
+                if (nextInsn instanceof final MethodInsnNode afterMethodInvoke
+                        && afterMethodInvoke.name.startsWith(second)) {
                     return parseSimpleTypeNameFromMethod(methodName, first.length());
                 }
                 nextInsn = nextInsn.getNext();
