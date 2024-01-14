@@ -36,7 +36,16 @@ import org.objectweb.asm.tree.InsnList;
 
 public class FluentGetterSuggester implements LvtSuggester {
 
-    private static final Set<String> ignored = Set.of("byteValue", "shortValue", "intValue", "longValue", "floatValue", "doubleValue", "booleanValue", "charValue", "get");
+    private static final Set<String> ignored = Set.of(
+            "byteValue",
+            "shortValue",
+            "intValue",
+            "longValue",
+            "floatValue",
+            "doubleValue",
+            "booleanValue",
+            "charValue",
+            "get");
 
     // 3 instructions, load "this" local var, getfield, return - TODO maybe if there is a CAST,
     private static final IntPredicate[] OPCODES_IN_ORDER = new IntPredicate[] {
