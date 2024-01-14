@@ -76,3 +76,8 @@ nextIntBetween,net/minecraft/util/RandomSource,(II)J,
 nextBoolean,net/minecraft/util/RandomSource,()Z,randomBoolean
 nextInt,net/minecraft/util/Mth,(Lnet/minecraft/util/RandomSource;)I,randomInt
 nextInt,net/minecraft/util/Mth,(I)I,
+# capitalization tests
+getDOMSource,io/paper/DOMSource,()Lio/paper/DOMSource;,domSource
+getThreadMXBean,java/lang/ManagementFactory,()Ljava/lang/management/ThreadMXBean;,threadMxBean
+getSectionYFromSectionIndex,net/minecraft/world/level/chunk/LevelChunkSection,()I,sectionYFromSectionIndex
+getLinkFSPath,io/paper/LinkFSPath,()Lio/paper/LinkFSPath;,linkFsPath
