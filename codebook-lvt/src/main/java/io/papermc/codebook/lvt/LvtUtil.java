@@ -135,12 +135,8 @@ public final class LvtUtil {
             return simpleName.toLowerCase();
         }
 
-        // Proper case!
+        // Decapitalize
         // HelloWorld -> helloWorld
-        // BigCrazy -> bigCrazy
-        //final String name = Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
-
-        // Parse leading capitals
         // abstractUUIDFix -> abstractUuidFix
         // myCoolAABBClass -> myCoolAabbClass
         return LvtUtil.decapitalize(simpleName);
