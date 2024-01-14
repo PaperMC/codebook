@@ -116,7 +116,7 @@ public final class LvtTypeSuggester {
         final String baseName = name.substring(1, name.length() - 1);
         final String simpleName = getSimpleName(baseName);
 
-        return Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
+        return LvtUtil.parseSimpleTypeName(simpleName);
     }
 
     private static final Splitter dollarSplitter = Splitter.on('$');

@@ -41,15 +41,33 @@ public final class LvtUtil {
         return Character.toUpperCase(name.charAt(index)) + name.substring(index + 1);
     }
 
-    public static @Nullable String decapitalize(final String name, final int index) {
-        if (!Character.isUpperCase(name.charAt(index))) {
-            // If the char isn't uppercase, that means it isn't following the typical `lowerCamelCase`
-            // Java method naming scheme how we expect, so we can't be sure it means what we think it
-            // means in this instance
-            return null;
-        } else {
-            return Character.toLowerCase(name.charAt(index)) + name.substring(index + 1);
+    public static String decapitalize(final String name) {
+        boolean capturingGroup = false;
+        final StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < name.length(); i++) {
+            final char character = name.charAt(i);
+            if (Character.isUpperCase(character)) {
+                if (capturingGroup) {
+                    if (i < name.length() - 1 && Character.isLowerCase(name.charAt(i + 1))) {
+                        // Next char is lowercase, so this is the start of a new word
+                        result.append(character);
+                    } else {
+                        // Convert the leading capital to lowercase and append to the result
+                        result.append(Character.toLowerCase(character));
+                    }
+                } else {
+                    // let's start a group, making sure to lowercase if it's the first char of the name
+                    capturingGroup = true;
+                    result.append(i == 0 ? Character.toLowerCase(character) : character);
+                }
+            } else {
+                capturingGroup = false;
+                result.append(character);
+            }
         }
+
+        return result.toString();
     }
 
     public static Predicate<String> equalsAny(final String... strings) {
@@ -107,5 +125,32 @@ public final class LvtUtil {
 
     public static boolean hasPrefix(final String text, final String prefix) {
         return text.length() > prefix.length() && text.startsWith(prefix);
+    }
+
+    public static String parseSimpleTypeName(final String simpleName) {
+        // Parse all capitalized types into lowercase
+        // UUID -> uuid
+        // AABB -> aabb
+        if (LvtUtil.isStringAllUppercase(simpleName)) {
+            return simpleName.toLowerCase();
+        }
+
+        // Decapitalize
+        // HelloWorld -> helloWorld
+        // abstractUUIDFix -> abstractUuidFix
+        // myCoolAABBClass -> myCoolAabbClass
+        return LvtUtil.decapitalize(simpleName);
+    }
+
+    @Nullable
+    public static String parseSimpleTypeNameFromMethod(final String methodName, int prefix) {
+        if (!Character.isUpperCase(methodName.charAt(prefix))) {
+            // If the char isn't uppercase, that means it isn't following the typical `lowerCamelCase`
+            // Java method naming scheme how we expect, so we can't be sure it means what we think it
+            // means in this instance
+            return null;
+        } else {
+            return LvtUtil.parseSimpleTypeName(methodName.substring(prefix));
+        }
     }
 }
