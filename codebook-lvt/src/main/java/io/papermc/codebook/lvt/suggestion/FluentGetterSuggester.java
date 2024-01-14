@@ -27,6 +27,7 @@ import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.io.IOException;
+import java.util.Set;
 import java.util.function.IntPredicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
@@ -34,6 +35,8 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.InsnList;
 
 public class FluentGetterSuggester implements LvtSuggester {
+
+    private static final Set<String> ignored = Set.of("byteValue", "shortValue", "intValue", "longValue", "floatValue", "doubleValue", "booleanValue", "charValue", "get");
 
     // 3 instructions, load "this" local var, getfield, return - TODO maybe if there is a CAST,
     private static final IntPredicate[] OPCODES_IN_ORDER = new IntPredicate[] {
@@ -74,7 +77,11 @@ public class FluentGetterSuggester implements LvtSuggester {
                 return "currentTimeMillis";
             }
         } else {
-            return call.data().name();
+            final String name = call.data().name();
+            if (ignored.contains(name)) {
+                return null;
+            }
+            return name;
         }
         return null;
     }
