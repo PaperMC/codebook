@@ -26,7 +26,6 @@ import static dev.denwav.hypo.model.data.MethodDescriptor.parseDescriptor;
 import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
 import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
 import com.google.inject.Injector;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.ClassData;
@@ -51,7 +50,6 @@ import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import io.papermc.codebook.lvt.suggestion.numbers.MthRandomSuggester;
 import io.papermc.codebook.lvt.suggestion.numbers.RandomSourceSuggester;
-import io.papermc.codebook.report.Reports;
 import io.papermc.codebook.report.type.MissingMethodLvtSuggestion;
 import java.io.IOException;
 import java.util.List;

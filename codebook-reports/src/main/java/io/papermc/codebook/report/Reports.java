@@ -58,8 +58,7 @@ public class Reports extends AbstractModule {
         this.typesToGenerate = typesToGenerate;
         this.reports = Map.of(
                 ReportType.MISSING_METHOD_LVT_SUGGESTION, new MissingMethodLvtSuggestion(),
-                ReportType.MISSING_METHOD_PARAM, new MissingMethodParam()
-        );
+                ReportType.MISSING_METHOD_PARAM, new MissingMethodParam());
     }
 
     public void generateReports() throws IOException {

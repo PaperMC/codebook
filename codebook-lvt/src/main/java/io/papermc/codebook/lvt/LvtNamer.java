@@ -93,14 +93,24 @@ public class LvtNamer {
         }
     }
 
-    private void checkMappings(final MethodData method, final @Nullable MethodMapping methodMapping, final int descriptorParamOffset, final IntUnaryOperator descriptorToMappingOffset) throws IOException {
+    private void checkMappings(
+            final MethodData method,
+            final @Nullable MethodMapping methodMapping,
+            final int descriptorParamOffset,
+            final IntUnaryOperator descriptorToMappingOffset) {
         this.checkMappings(method, methodMapping, descriptorParamOffset, descriptorToMappingOffset, null);
     }
-    private void checkMappings(final MethodData method, final @Nullable MethodMapping methodMapping, final int descriptorParamOffset, final IntUnaryOperator descriptorToMappingOffset, final @Nullable LambdaClosure lambdaClosure) throws IOException {
+
+    private void checkMappings(
+            final MethodData method,
+            final @Nullable MethodMapping methodMapping,
+            final int descriptorParamOffset,
+            final IntUnaryOperator descriptorToMappingOffset,
+            final @Nullable LambdaClosure lambdaClosure) {
         if (method.params().size() == descriptorParamOffset) {
             return;
         }
-        if (methodMapping == null || (method.params().size() - descriptorParamOffset > methodMapping.getParameterMappings().size())) { // != should be sufficient here, but hypo's CopyMappingsDown for constructors incorrectly applies         if (methodMapping == null || (method.params().size() - descriptorParamOffset > methodMapping.getParameterMappings().size())) { // != should be sufficient here, but hypo's CopyMappingsDown for constructors incorrectly applies mappings to implicit constructor params
+        if (methodMapping == null || (method.params().size() - descriptorParamOffset > methodMapping.getParameterMappings().size())) { // != should have be sufficient here, but hypo's CopyMappingsDown for constructors incorrectly applies mappings to implicit constructor params
             this.reports.getInstance(MissingMethodParam.class).reportMissingParam(method, methodMapping, descriptorParamOffset, descriptorToMappingOffset, lambdaClosure);
         }
     }
@@ -207,13 +217,22 @@ public class LvtNamer {
         final boolean skipMapping;
         if (method.name().startsWith("access$") && method.isSynthetic()) { // never in source
             skipMapping = true;
-        } else if (method.name().startsWith("lambda$") && method.isSynthetic() && (lambdaCalls == null || lambdaCalls.isEmpty())) { // lambdas that had their use stripped by mojang
+        } else if (method.name().startsWith("lambda$")
+                && method.isSynthetic()
+                && (lambdaCalls == null || lambdaCalls.isEmpty())) { // lambdas that had their use stripped by mojang
             skipMapping = true;
-        } else if (superClass != null && superClass.name().equals("java/lang/Enum") && method.name().equals("valueOf") && method.descriptorText().startsWith("(Ljava/lang/String;)")) { // created by the compiler
+        } else if (superClass != null
+                && superClass.name().equals("java/lang/Enum")
+                && method.name().equals("valueOf")
+                && method.descriptorText().startsWith("(Ljava/lang/String;)")) { // created by the compiler
             skipMapping = true;
-        } else if (parentClass.is(ClassKind.RECORD) && method.name().equals("equals") && method.descriptorText().equals("(Ljava/lang/Object;)Z")) { // created by the compiler
+        } else if (parentClass.is(ClassKind.RECORD)
+                && method.name().equals("equals")
+                && method.descriptorText().equals("(Ljava/lang/Object;)Z")) { // created by the compiler
             skipMapping = true;
-        } else if (method.isSynthetic() && method.get(HypoHydration.SYNTHETIC_TARGET) != null) { // don't trust isBridge, apparently it's not always accurate
+        } else if (method.isSynthetic()
+                && method.get(HypoHydration.SYNTHETIC_TARGET)
+                        != null) { // don't trust isBridge, apparently it's not always accurate
             skipMapping = true;
         } else {
             skipMapping = false;
@@ -222,14 +241,29 @@ public class LvtNamer {
         if (!skipMapping) {
             if (method.isConstructor()) {
                 if (parentClass.is(ClassKind.ENUM)) {
-                    this.checkMappings(method, methodMapping.orElse(null), 2, i -> i + 1); // enum constructors include name and ordinal
+                    this.checkMappings(
+                            method,
+                            methodMapping.orElse(null),
+                            2,
+                            i -> i + 1); // enum constructors include name and ordinal
                 } else {
-                    if (!ANONYMOUS_CLASS.matcher(parentClass.name()).matches()) { // anonymous classes cannot have constructors in source
+                    if (!ANONYMOUS_CLASS
+                            .matcher(parentClass.name())
+                            .matches()) { // anonymous classes cannot have constructors in source
                         if (parentClass.outerClass() != null) {
                             if (localClassClosure == null) {
-                                this.checkMappings(method, methodMapping.orElse(null), parentClass.isStaticInnerClass() ? 0 : 1, i -> i + 1);
+                                this.checkMappings(
+                                        method,
+                                        methodMapping.orElse(null),
+                                        parentClass.isStaticInnerClass() ? 0 : 1,
+                                        i -> i + 1);
                             } else {
-                                this.checkMappings(method, methodMapping.orElse(null), (parentClass.isStaticInnerClass() ? 0 : 1) + localClassClosure.getParamLvtIndices().length, i -> i + 1);
+                                this.checkMappings(
+                                        method,
+                                        methodMapping.orElse(null),
+                                        (parentClass.isStaticInnerClass() ? 0 : 1)
+                                                + localClassClosure.getParamLvtIndices().length,
+                                        i -> i + 1);
                             }
                         } else {
                             this.checkMappings(method, methodMapping.orElse(null), 0, i -> i + 1);
@@ -241,12 +275,19 @@ public class LvtNamer {
                     this.checkMappings(method, methodMapping.orElse(null), 0, i -> i + (method.isStatic() ? 0 : 1));
                 } else {
                     final int descriptorOffset;
-                    if (!method.isStatic() && outerMethodParamLvtIndices.length > 0 && outerMethodParamLvtIndices[0] == 0) {
+                    if (!method.isStatic()
+                            && outerMethodParamLvtIndices.length > 0
+                            && outerMethodParamLvtIndices[0] == 0) {
                         descriptorOffset = outerMethodParamLvtIndices.length - 1;
                     } else {
                         descriptorOffset = outerMethodParamLvtIndices.length;
                     }
-                    this.checkMappings(method, methodMapping.orElse(null), descriptorOffset, i -> i + (method.isStatic() ? 0 : 1), lambdaClosure);
+                    this.checkMappings(
+                            method,
+                            methodMapping.orElse(null),
+                            descriptorOffset,
+                            i -> i + (method.isStatic() ? 0 : 1),
+                            lambdaClosure);
                 }
             }
         }
