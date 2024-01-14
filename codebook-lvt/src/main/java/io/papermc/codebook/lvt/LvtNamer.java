@@ -34,17 +34,15 @@ import dev.denwav.hypo.model.data.HypoKey;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
 import dev.denwav.hypo.model.data.types.PrimitiveType;
+import io.papermc.codebook.report.Reports;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.model.Mapping;
 import org.cadixdev.lorenz.model.MethodMapping;
@@ -61,12 +59,10 @@ public class LvtNamer {
     private final LvtTypeSuggester lvtTypeSuggester;
     private final RootLvtSuggester lvtAssignSuggester;
 
-    public final Map<String, AtomicInteger> missedNameSuggestions = new ConcurrentHashMap<>();
-
-    public LvtNamer(final HypoContext context, final MappingSet mappings) throws IOException {
+    public LvtNamer(final HypoContext context, final MappingSet mappings, final Reports reports) throws IOException {
         this.mappings = mappings;
         this.lvtTypeSuggester = new LvtTypeSuggester(context);
-        this.lvtAssignSuggester = new RootLvtSuggester(context, this.lvtTypeSuggester, this.missedNameSuggestions);
+        this.lvtAssignSuggester = new RootLvtSuggester(context, this.lvtTypeSuggester, reports);
     }
 
     public void processClass(final AsmClassData classData) throws IOException {

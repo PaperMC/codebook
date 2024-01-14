@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     implementation(platform(libs.hypo.platform))
+    implementation(projects.codebookReports)
 
     api(libs.checker)
     api(libs.bundles.hypo.base)

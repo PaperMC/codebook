@@ -31,6 +31,7 @@ import com.google.inject.util.Modules;
 import com.google.inject.util.Providers;
 import dev.denwav.hypo.core.HypoContext;
 import io.papermc.codebook.config.CodeBookContext;
+import io.papermc.codebook.report.Reports;
 import jakarta.inject.Qualifier;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -155,5 +156,12 @@ public abstract class CodeBookPage {
     @Retention(RetentionPolicy.RUNTIME)
     public @interface Hypo {
         Key<HypoContext> KEY = Key.get(HypoContext.class, Hypo.class);
+    }
+
+    @Qualifier
+    @Target(ElementType.PARAMETER)
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Report {
+        Key<Reports> KEY = Key.get(Reports.class, Report.class);
     }
 }
