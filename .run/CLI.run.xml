@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="CLI" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="io.papermc.codebook.cli.Main" />
+    <module name="codebook.codebook-cli.main" />
+    <option name="PROGRAM_PARAMETERS" value="--output=run/output.jar --force --mc-version=1.20.4 --remapper-coords=net.neoforged:AutoRenamingTool:1.0.7 --params-coords=org.parchmentmc.data:parchment-1.20.3:2023.12.31 --all-reports=true --reports-dir=run/reports" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="io.papermc.codebook.cli.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
