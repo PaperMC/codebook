@@ -110,12 +110,113 @@ public class LvtNamer {
         if (method.params().size() == descriptorParamOffset) {
             return;
         }
-        if (methodMapping == null || (method.params().size() - descriptorParamOffset > methodMapping.getParameterMappings().size())) { // != should have be sufficient here, but hypo's CopyMappingsDown for constructors incorrectly applies mappings to implicit constructor params
-            this.reports.getInstance(MissingMethodParam.class).reportMissingParam(method, methodMapping, descriptorParamOffset, descriptorToMappingOffset, lambdaClosure);
+        if (methodMapping == null || (method.params().size() - descriptorParamOffset > methodMapping.getParameterMappings().size())) {
+            // != should have been sufficient here, but hypo's CopyMappingsDown for constructors incorrectly applies mappings to implicit constructor params
+            this.reports
+                    .getInstance(MissingMethodParam.class)
+                    .reportMissingParam(
+                            method, methodMapping, descriptorParamOffset, descriptorToMappingOffset, lambdaClosure);
         }
     }
 
     private static final Pattern ANONYMOUS_CLASS = Pattern.compile(".+\\$\\d+$");
+
+    private static boolean shouldSkipMapping(
+            final MethodData method,
+            final ClassData parentClass,
+            final @Nullable ClassData superClass,
+            final @Nullable List<LambdaClosure> lambdaCalls) {
+        final String name = method.name();
+        if (name.startsWith("access$") && method.isSynthetic()) {
+            // never in source
+            return true;
+        } else if (name.startsWith("lambda$")
+                && method.isSynthetic()
+                && (lambdaCalls == null || lambdaCalls.isEmpty())) {
+            // lambdas that had their use stripped by mojang
+            return true;
+        } else {
+            final String descriptorText = method.descriptorText();
+            if (superClass != null
+                    && superClass.name().equals("java/lang/Enum")
+                    && name.equals("valueOf")
+                    && descriptorText.startsWith("(Ljava/lang/String;)")) {
+                // created by the compiler
+                return true;
+            } else if (parentClass.is(ClassKind.RECORD)
+                    && name.equals("equals")
+                    && descriptorText.equals("(Ljava/lang/Object;)Z")) {
+                // created by the compiler
+                return true;
+            } else if (method.isSynthetic() && method.get(HypoHydration.SYNTHETIC_TARGET) != null) {
+                // don't trust isBridge, apparently it's not always accurate
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    private void handleConstructorMappings(
+            final MethodData method,
+            final ClassData parentClass,
+            final @Nullable MethodMapping methodMapping,
+            final @Nullable LocalClassClosure localClassClosure)
+            throws IOException {
+        if (parentClass.is(ClassKind.ENUM)) {
+            // enum constructors include name and ordinal
+            this.checkMappings(method, methodMapping, 2, i -> i + 1);
+        } else {
+            if (!ANONYMOUS_CLASS.matcher(parentClass.name()).matches()) {
+                // anonymous classes cannot have constructors in source
+                if (parentClass.outerClass() != null) {
+                    final int descriptorParamOffset = parentClass.isStaticInnerClass() ? 0 : 1;
+                    if (localClassClosure == null) {
+                        this.checkMappings(method, methodMapping, descriptorParamOffset, i -> i + 1);
+                    } else {
+                        this.checkMappings(
+                                method,
+                                methodMapping,
+                                descriptorParamOffset + localClassClosure.getParamLvtIndices().length,
+                                i -> i + 1);
+                    }
+                } else {
+                    this.checkMappings(method, methodMapping, 0, i -> i + 1);
+                }
+            }
+        }
+    }
+
+    private void handleCheckingMappings(
+            final MethodData method,
+            final ClassData parentClass,
+            final @Nullable ClassData superClass,
+            final @Nullable List<LambdaClosure> lambdaCalls,
+            final @Nullable MethodMapping methodMapping,
+            final int @Nullable [] outerMethodParamLvtIndices,
+            final @Nullable LambdaClosure lambdaClosure,
+            final @Nullable LocalClassClosure localClassClosure)
+            throws IOException {
+        if (shouldSkipMapping(method, parentClass, superClass, lambdaCalls)) {
+            return;
+        }
+        if (method.isConstructor()) {
+            this.handleConstructorMappings(method, parentClass, methodMapping, localClassClosure);
+        } else {
+            if (outerMethodParamLvtIndices == null) {
+                this.checkMappings(method, methodMapping, 0, i -> i + (method.isStatic() ? 0 : 1));
+            } else {
+                final int descriptorOffset;
+                if (!method.isStatic() && outerMethodParamLvtIndices.length > 0 && outerMethodParamLvtIndices[0] == 0) {
+                    descriptorOffset = outerMethodParamLvtIndices.length - 1;
+                } else {
+                    descriptorOffset = outerMethodParamLvtIndices.length;
+                }
+                this.checkMappings(
+                        method, methodMapping, descriptorOffset, i -> i + (method.isStatic() ? 0 : 1), lambdaClosure);
+            }
+        }
+    }
 
     private void fillNames0(final MethodData method) throws IOException {
         final @Nullable Set<String> names = method.get(SCOPED_NAMES);
@@ -214,83 +315,15 @@ public class LvtNamer {
 
         final @Nullable ClassData superClass = parentClass.superClass();
 
-        final boolean skipMapping;
-        if (method.name().startsWith("access$") && method.isSynthetic()) { // never in source
-            skipMapping = true;
-        } else if (method.name().startsWith("lambda$")
-                && method.isSynthetic()
-                && (lambdaCalls == null || lambdaCalls.isEmpty())) { // lambdas that had their use stripped by mojang
-            skipMapping = true;
-        } else if (superClass != null
-                && superClass.name().equals("java/lang/Enum")
-                && method.name().equals("valueOf")
-                && method.descriptorText().startsWith("(Ljava/lang/String;)")) { // created by the compiler
-            skipMapping = true;
-        } else if (parentClass.is(ClassKind.RECORD)
-                && method.name().equals("equals")
-                && method.descriptorText().equals("(Ljava/lang/Object;)Z")) { // created by the compiler
-            skipMapping = true;
-        } else if (method.isSynthetic()
-                && method.get(HypoHydration.SYNTHETIC_TARGET)
-                        != null) { // don't trust isBridge, apparently it's not always accurate
-            skipMapping = true;
-        } else {
-            skipMapping = false;
-        }
-
-        if (!skipMapping) {
-            if (method.isConstructor()) {
-                if (parentClass.is(ClassKind.ENUM)) {
-                    this.checkMappings(
-                            method,
-                            methodMapping.orElse(null),
-                            2,
-                            i -> i + 1); // enum constructors include name and ordinal
-                } else {
-                    if (!ANONYMOUS_CLASS
-                            .matcher(parentClass.name())
-                            .matches()) { // anonymous classes cannot have constructors in source
-                        if (parentClass.outerClass() != null) {
-                            if (localClassClosure == null) {
-                                this.checkMappings(
-                                        method,
-                                        methodMapping.orElse(null),
-                                        parentClass.isStaticInnerClass() ? 0 : 1,
-                                        i -> i + 1);
-                            } else {
-                                this.checkMappings(
-                                        method,
-                                        methodMapping.orElse(null),
-                                        (parentClass.isStaticInnerClass() ? 0 : 1)
-                                                + localClassClosure.getParamLvtIndices().length,
-                                        i -> i + 1);
-                            }
-                        } else {
-                            this.checkMappings(method, methodMapping.orElse(null), 0, i -> i + 1);
-                        }
-                    }
-                }
-            } else {
-                if (outerMethodParamLvtIndices == null) {
-                    this.checkMappings(method, methodMapping.orElse(null), 0, i -> i + (method.isStatic() ? 0 : 1));
-                } else {
-                    final int descriptorOffset;
-                    if (!method.isStatic()
-                            && outerMethodParamLvtIndices.length > 0
-                            && outerMethodParamLvtIndices[0] == 0) {
-                        descriptorOffset = outerMethodParamLvtIndices.length - 1;
-                    } else {
-                        descriptorOffset = outerMethodParamLvtIndices.length;
-                    }
-                    this.checkMappings(
-                            method,
-                            methodMapping.orElse(null),
-                            descriptorOffset,
-                            i -> i + (method.isStatic() ? 0 : 1),
-                            lambdaClosure);
-                }
-            }
-        }
+        this.handleCheckingMappings(
+                method,
+                parentClass,
+                superClass,
+                lambdaCalls,
+                methodMapping.orElse(null),
+                outerMethodParamLvtIndices,
+                lambdaClosure,
+                localClassClosure);
 
         // If there's no LVT table there's nothing for us to process
         if (node.localVariables == null) {
