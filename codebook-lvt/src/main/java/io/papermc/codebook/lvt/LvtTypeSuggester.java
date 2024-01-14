@@ -104,7 +104,8 @@ public final class LvtTypeSuggester {
         // TODO Try to determine name from signature, rather than just descriptor
         final @Nullable ClassData typeClass = this.context.getContextProvider().findClass(type);
         if (typeClass != null) {
-            if (typeClass.doesExtendOrImplement(this.listClass) && !typeClass.name().startsWith("net/minecraft/nbt/")) { // exclude nbt lists
+            if (typeClass.doesExtendOrImplement(this.listClass)
+                    && !typeClass.name().startsWith("net/minecraft/nbt/")) { // exclude nbt lists
                 return "list";
             } else if (typeClass.doesExtendOrImplement(this.setClass)) {
                 return "set";
