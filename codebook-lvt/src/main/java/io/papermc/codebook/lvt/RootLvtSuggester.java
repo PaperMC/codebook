@@ -33,6 +33,7 @@ import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.MethodDescriptor;
 import dev.denwav.hypo.model.data.types.JvmType;
+import io.papermc.codebook.lvt.suggestion.ComplexGetSuggester;
 import io.papermc.codebook.lvt.suggestion.FluentGetterSuggester;
 import io.papermc.codebook.lvt.suggestion.GenericSuggester;
 import io.papermc.codebook.lvt.suggestion.LvtSuggester;
@@ -56,6 +57,7 @@ import io.papermc.codebook.report.type.MissingMethodLvtSuggestion;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -75,6 +77,7 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
             MathSuggester.class,
             StringSuggester.class,
             PositionsSuggester.class,
+            ComplexGetSuggester.class,
             NewPrefixSuggester.class,
             SingleVerbSuggester.class,
             VerbPrefixBooleanSuggester.class,
@@ -171,9 +174,49 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
         }
     }
 
+    private static final Set<BoxMethod> BOX_METHODS = Set.of(
+            new BoxMethod("java/lang/Byte", "byteValue", "()B"),
+            new BoxMethod("java/lang/Short", "shortValue", "()S"),
+            new BoxMethod("java/lang/Integer", "intValue", "()I"),
+            new BoxMethod("java/lang/Long", "longValue", "()J"),
+            new BoxMethod("java/lang/Float", "floatValue", "()F"),
+            new BoxMethod("java/lang/Double", "doubleValue", "()D"),
+            new BoxMethod("java/lang/Boolean", "booleanValue", "()Z"),
+            new BoxMethod("java/lang/Character", "charValue", "()C")
+    );
+    private static final Set<String> BOX_METHOD_NAMES = BOX_METHODS.stream().map(BoxMethod::name).collect(Collectors.toUnmodifiableSet());
+
+    private record BoxMethod(String owner, String name, String desc) {
+        boolean is(final MethodInsnNode node) {
+            return this.owner.equals(node.owner) && this.name.equals(node.name) && this.desc.equals(node.desc) && !node.itf;
+        }
+    }
+
+    private @Nullable AbstractInsnNode walkBack(final VarInsnNode assignmentNode) {
+        AbstractInsnNode prev = assignmentNode.getPrevious();
+        if (prev != null) {
+            final int op = prev.getOpcode();
+            if (op == Opcodes.INVOKEVIRTUAL) {
+                final MethodInsnNode methodInsnNode = (MethodInsnNode) prev;
+                if (BOX_METHOD_NAMES.contains(methodInsnNode.name) && BOX_METHODS.stream().anyMatch(bm -> bm.is(methodInsnNode))) {
+                    prev = prev.getPrevious();
+                    if (prev != null && prev.getOpcode() == Opcodes.CHECKCAST) {
+                        return prev.getPrevious();
+                    }
+                    return prev;
+                }
+            }
+            return prev;
+        }
+        return null;
+    }
+
     private @Nullable String suggestNameFromFirstAssignment(final MethodData parent, final VarInsnNode varInsn)
             throws IOException {
-        final AbstractInsnNode prev = varInsn.getPrevious();
+        final @Nullable AbstractInsnNode prev = this.walkBack(varInsn);
+        if (prev == null) {
+            return null;
+        }
         final int op = prev.getOpcode();
         if (op != Opcodes.INVOKESTATIC && op != Opcodes.INVOKEVIRTUAL && op != Opcodes.INVOKEINTERFACE) {
             return null;

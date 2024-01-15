@@ -25,6 +25,7 @@ package io.papermc.codebook.lvt;
 import dev.denwav.hypo.asm.HypoAsmUtil;
 import dev.denwav.hypo.model.data.types.JvmType;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
@@ -167,5 +168,15 @@ public final class LvtUtil {
             prev = prev.getPrevious();
         }
         return prev;
+    }
+
+    public static String staticFinalFieldNameToLocalName(final String fieldName) {
+        final String[] split = fieldName.split("_");
+        final StringBuilder builder = new StringBuilder();
+        builder.append(split[0].toLowerCase(Locale.ENGLISH));
+        for (int i = 1; i < split.length; i++) {
+            builder.append(capitalize(split[i].toLowerCase(Locale.ENGLISH), 0));
+        }
+        return builder.toString();
     }
 }
