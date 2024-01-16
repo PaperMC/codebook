@@ -110,8 +110,11 @@ public class LvtNamer {
         if (method.params().size() == descriptorParamOffset) {
             return;
         }
-        if (methodMapping == null || (method.params().size() - descriptorParamOffset > methodMapping.getParameterMappings().size())) {
-            // != should have been sufficient here, but hypo's CopyMappingsDown for constructors incorrectly applies mappings to implicit constructor params
+        if (methodMapping == null
+                || (method.params().size() - descriptorParamOffset
+                        > methodMapping.getParameterMappings().size())) {
+            // != should have been sufficient here, but hypo's CopyMappingsDown for constructors incorrectly applies
+            // mappings to implicit constructor params
             this.reports
                     .getInstance(MissingMethodParam.class)
                     .reportMissingParam(
