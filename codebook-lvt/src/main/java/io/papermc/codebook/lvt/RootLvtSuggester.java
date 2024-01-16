@@ -93,7 +93,10 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
     private final InstructionUnwrapper unwrapper;
 
     public RootLvtSuggester(
-            final HypoContext hypoContext, final LvtTypeSuggester lvtTypeSuggester, final Reports reports, final Injector reportsInjector) {
+            final HypoContext hypoContext,
+            final LvtTypeSuggester lvtTypeSuggester,
+            final Reports reports,
+            final Injector reportsInjector) {
         this.hypoContext = hypoContext;
         this.lvtTypeSuggester = lvtTypeSuggester;
         this.injector = reportsInjector.createChildInjector(this);
@@ -143,7 +146,8 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
         }
 
         if (assignmentNode != null) {
-            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(ContainerContext.from(parent), new AssignmentContext(assignmentNode, lvt));
+            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(
+                    ContainerContext.from(parent), new AssignmentContext(assignmentNode, lvt));
             if (suggestedName != null) {
                 return determineFinalName(suggestedName, scopedNames);
             }
@@ -176,8 +180,8 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
         }
     }
 
-    private @Nullable String suggestNameFromFirstAssignment(final ContainerContext container, final AssignmentContext assignment)
-            throws IOException {
+    private @Nullable String suggestNameFromFirstAssignment(
+            final ContainerContext container, final AssignmentContext assignment) throws IOException {
         final @Nullable AbstractInsnNode prev = this.unwrapper.unwrapFromAssignment(assignment.assignmentNode());
         if (prev == null) {
             return null;
@@ -202,7 +206,9 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
         final @Nullable String suggestion = this.suggestFromMethod(
                 MethodCallContext.create(method),
                 MethodInsnContext.create(owner, methodInsnNode),
-                container, assignment, new SuggesterContext(this.hypoContext, this.lvtTypeSuggester));
+                container,
+                assignment,
+                new SuggesterContext(this.hypoContext, this.lvtTypeSuggester));
         if (suggestion == null) {
             this.injector
                     .getInstance(MissingMethodLvtSuggestion.class)
@@ -213,7 +219,11 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
 
     @Override
     public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container, final AssignmentContext assignment, final SuggesterContext suggester)
+            final MethodCallContext call,
+            final MethodInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester)
             throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {
@@ -227,7 +237,11 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
 
     @Override
     public @Nullable String suggestFromField(
-            final FieldCallContext call, final FieldInsnContext insn, final ContainerContext container, final AssignmentContext assignment, final SuggesterContext suggester)
+            final FieldCallContext call,
+            final FieldInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester)
             throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {

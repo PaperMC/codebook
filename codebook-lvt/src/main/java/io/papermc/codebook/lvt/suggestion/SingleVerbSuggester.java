@@ -46,7 +46,11 @@ public class SingleVerbSuggester implements LvtSuggester {
 
     @Override
     public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container, final AssignmentContext assignment, final SuggesterContext suggester) {
+            final MethodCallContext call,
+            final MethodInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester) {
         final String methodName = call.data().name();
 
         final @Nullable String prefix = tryMatchPrefix(methodName, SINGLE_VERB_PREFIXES);

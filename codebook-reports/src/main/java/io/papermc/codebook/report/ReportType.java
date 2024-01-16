@@ -25,6 +25,5 @@ package io.papermc.codebook.report;
 public enum ReportType {
     MISSING_METHOD_LVT_SUGGESTION,
     MISSING_METHOD_PARAM,
-    CHECK_CAST_WRAPS
-    ;
+    CHECK_CAST_WRAPS;
 }

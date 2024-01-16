@@ -1,3 +1,25 @@
+/*
+ * codebook is a remapper utility for the PaperMC project.
+ *
+ * Copyright (c) 2023 Kyle Wood (DenWav)
+ *                    Contributors
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation;
+ * version 3 only, no later versions.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ * USA
+ */
+
 package io.papermc.codebook.lvt;
 
 import com.google.inject.Injector;
@@ -28,10 +50,18 @@ public class InstructionUnwrapper {
             new Method("java/lang/Character", "charValue", "()C")));
 
     private static final MethodMatcher UNWRAP_AFTER_CAST = new MethodMatcher(Set.of(
-            new Method("net/minecraft/world/level/block/state/BlockState", "getValue", "(Lnet/minecraft/world/level/block/state/properties/Property;)Ljava/lang/Comparable;"),
-            new Method("net/minecraft/world/level/storage/loot/LootContext", "getParamOrNull", "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;"),
-            new Method("net/minecraft/world/level/storage/loot/LootParams$Builder", "getOptionalParameter", "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;")
-    ));
+            new Method(
+                    "net/minecraft/world/level/block/state/BlockState",
+                    "getValue",
+                    "(Lnet/minecraft/world/level/block/state/properties/Property;)Ljava/lang/Comparable;"),
+            new Method(
+                    "net/minecraft/world/level/storage/loot/LootContext",
+                    "getParamOrNull",
+                    "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;"),
+            new Method(
+                    "net/minecraft/world/level/storage/loot/LootParams$Builder",
+                    "getOptionalParameter",
+                    "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;")));
 
     public InstructionUnwrapper(final Reports reports, final Injector reportsInjector) {
         this.reports = reports;
@@ -55,10 +85,11 @@ public class InstructionUnwrapper {
             return null;
         }
 
-
         if (prev.getOpcode() == Opcodes.CHECKCAST) {
             final AbstractInsnNode tempPrev = prev.getPrevious();
-            if (tempPrev.getOpcode() == Opcodes.INVOKEVIRTUAL || tempPrev.getOpcode() == Opcodes.INVOKEINTERFACE || tempPrev.getOpcode() == Opcodes.INVOKESTATIC) {
+            if (tempPrev.getOpcode() == Opcodes.INVOKEVIRTUAL
+                    || tempPrev.getOpcode() == Opcodes.INVOKEINTERFACE
+                    || tempPrev.getOpcode() == Opcodes.INVOKESTATIC) {
                 final MethodInsnNode methodInsn = (MethodInsnNode) tempPrev;
                 if (UNWRAP_AFTER_CAST.matches(methodInsn)) {
                     prev = methodInsn;
@@ -81,9 +112,10 @@ public class InstructionUnwrapper {
         }
 
         boolean matches(final AbstractInsnNode insn) {
-            return insn instanceof final MethodInsnNode methodInsnNode && this.methodNames.contains(methodInsnNode.name) && this.methods.stream().anyMatch(m -> m.matches(methodInsnNode));
+            return insn instanceof final MethodInsnNode methodInsnNode
+                    && this.methodNames.contains(methodInsnNode.name)
+                    && this.methods.stream().anyMatch(m -> m.matches(methodInsnNode));
         }
-
     }
 
     private record Method(String owner, String name, String desc, boolean itf) {

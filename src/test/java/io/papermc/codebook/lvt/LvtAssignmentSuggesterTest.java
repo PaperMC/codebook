@@ -96,8 +96,7 @@ class LvtAssignmentSuggesterTest {
 
     @BeforeEach
     void setup() throws Exception {
-        this.context =
-                HypoContext.builder().withContextProviders(this.provider).build();
+        this.context = HypoContext.builder().withContextProviders(this.provider).build();
 
         when(this.provider.findClass("java/util/List")).thenReturn(this.listClass);
         when(this.provider.findClass("java/util/Set")).thenReturn(this.setClass);
@@ -107,8 +106,8 @@ class LvtAssignmentSuggesterTest {
 
         when(this.randomSourceClass.name()).thenReturn(RANDOM_SOURCE_TYPE.asInternalName());
 
-        this.suggester =
-                new RootLvtSuggester(this.context, new LvtTypeSuggester(this.context), this.reports, Guice.createInjector(this.reports));
+        this.suggester = new RootLvtSuggester(
+                this.context, new LvtTypeSuggester(this.context), this.reports, Guice.createInjector(this.reports));
     }
 
     @ParameterizedTest
@@ -148,7 +147,11 @@ class LvtAssignmentSuggesterTest {
         final MethodInsnNode insn =
                 new MethodInsnNode(Opcodes.INVOKEVIRTUAL, methodOwner, methodName, methodDescriptor);
         final @Nullable String result = this.suggester.suggestFromMethod(
-                MethodCallContext.create(method), MethodInsnContext.create(owner, insn), context, this.assignment, new SuggesterContext(this.context, this.suggester.lvtTypeSuggester));
+                MethodCallContext.create(method),
+                MethodInsnContext.create(owner, insn),
+                context,
+                this.assignment,
+                new SuggesterContext(this.context, this.suggester.lvtTypeSuggester));
 
         assertEquals(expectedName, result);
     }

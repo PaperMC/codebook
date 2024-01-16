@@ -60,21 +60,24 @@ public class ComplexGetSuggester implements LvtSuggester {
     private static final StaticFieldEntry LOOT_CONTEXT_PARAM = new StaticFieldEntry(
             Set.of(
                     "net/minecraft/world/level/storage/loot/LootContext",
-                    "net/minecraft/world/level/storage/loot/LootParams$Builder"
-            ),
+                    "net/minecraft/world/level/storage/loot/LootParams$Builder"),
             Set.of(
-                    Map.entry("getParamOrNull", "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;"),
-                    Map.entry("getOptionalParameter", "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;")
-            ),
-            Set.of(
-                    "Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;"
-            ),
-            "Param"
-    );
+                    Map.entry(
+                            "getParamOrNull",
+                            "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;"),
+                    Map.entry(
+                            "getOptionalParameter",
+                            "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;")),
+            Set.of("Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;"),
+            "Param");
 
     @Override
     public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container, final AssignmentContext assignment, final SuggesterContext suggester)
+            final MethodCallContext call,
+            final MethodInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester)
             throws IOException {
         final MethodInsnNode node = insn.node();
         if (BLOCK_STATE_PROPERTY.test(node)) {
@@ -93,7 +96,9 @@ public class ComplexGetSuggester implements LvtSuggester {
             return matches(this.owners, this.methods, node);
         }
 
-        String transform(final MethodInsnNode node, final AssignmentContext assignment, final SuggesterContext suggester) throws IOException {
+        String transform(
+                final MethodInsnNode node, final AssignmentContext assignment, final SuggesterContext suggester)
+                throws IOException {
             final AbstractInsnNode prev = node.getPrevious();
             if (prev instanceof final FieldInsnNode fieldInsnNode
                     && fieldInsnNode.getOpcode() == Opcodes.GETSTATIC
@@ -101,11 +106,13 @@ public class ComplexGetSuggester implements LvtSuggester {
                 return staticFinalFieldNameToLocalName(fieldInsnNode.name) + (this.suffix == null ? "" : this.suffix);
             }
             // always use the type instead of any other suggesters
-            return suggester.typeSuggester().suggestNameFromType(toJvmType(assignment.lvt().desc)) + (this.suffix == null ? "" : this.suffix);
+            return suggester.typeSuggester().suggestNameFromType(toJvmType(assignment.lvt().desc))
+                    + (this.suffix == null ? "" : this.suffix);
         }
     }
 
-    private static boolean matches(final Set<String> owners, final Set<Entry<String, String>> methods, final MethodInsnNode node) {
+    private static boolean matches(
+            final Set<String> owners, final Set<Entry<String, String>> methods, final MethodInsnNode node) {
         return owners.contains(node.owner)
                 && methods.stream()
                         .anyMatch(e ->

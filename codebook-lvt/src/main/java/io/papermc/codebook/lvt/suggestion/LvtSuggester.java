@@ -35,13 +35,21 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 public interface LvtSuggester {
 
     default @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container, final AssignmentContext assignment, final SuggesterContext suggester)
+            final MethodCallContext call,
+            final MethodInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester)
             throws IOException {
         return null;
     }
 
     default @Nullable String suggestFromField(
-            final FieldCallContext call, final FieldInsnContext insn, final ContainerContext container, final AssignmentContext assignment, final SuggesterContext suggester)
+            final FieldCallContext call,
+            final FieldInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester)
             throws IOException {
         return null;
     }
