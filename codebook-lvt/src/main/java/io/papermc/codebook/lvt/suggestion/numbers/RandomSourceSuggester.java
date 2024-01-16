@@ -29,7 +29,9 @@ import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.types.ClassType;
 import dev.denwav.hypo.model.data.types.JvmType;
 import io.papermc.codebook.lvt.suggestion.LvtSuggester;
+import io.papermc.codebook.lvt.suggestion.context.AssignmentContext;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.SuggesterContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import jakarta.inject.Inject;
@@ -53,7 +55,7 @@ public class RandomSourceSuggester implements LvtSuggester {
 
     @Override
     public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
+            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container, final AssignmentContext assignment, final SuggesterContext suggester) {
         if (this.randomSourceClass == null) {
             return null;
         }
