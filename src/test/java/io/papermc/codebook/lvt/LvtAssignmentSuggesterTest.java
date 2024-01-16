@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import com.google.inject.Guice;
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
@@ -100,7 +101,8 @@ class LvtAssignmentSuggesterTest {
 
         when(this.randomSourceClass.name()).thenReturn(RANDOM_SOURCE_TYPE.asInternalName());
 
-        this.suggester = new RootLvtSuggester(context, new LvtTypeSuggester(context), this.reports);
+        this.suggester =
+                new RootLvtSuggester(context, new LvtTypeSuggester(context), Guice.createInjector(this.reports));
     }
 
     @ParameterizedTest

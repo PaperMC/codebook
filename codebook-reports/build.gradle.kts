@@ -7,6 +7,7 @@ dependencies {
     implementation(platform(libs.hypo.platform))
 
     api(libs.checker)
+    api(libs.lorenz)
 
     implementation(libs.bundles.hypo.impl)
     implementation(libs.bundles.asm)

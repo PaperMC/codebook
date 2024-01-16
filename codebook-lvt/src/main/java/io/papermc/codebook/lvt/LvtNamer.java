@@ -22,6 +22,8 @@
 
 package io.papermc.codebook.lvt;
 
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
@@ -34,7 +36,9 @@ import dev.denwav.hypo.model.data.HypoKey;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.types.JvmType;
 import dev.denwav.hypo.model.data.types.PrimitiveType;
+import io.papermc.codebook.report.ReportType;
 import io.papermc.codebook.report.Reports;
+import io.papermc.codebook.report.type.MissingMethodParam;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,12 +61,16 @@ public class LvtNamer {
 
     private final MappingSet mappings;
     private final LvtTypeSuggester lvtTypeSuggester;
+    private final Reports reports;
+    private final Injector reportsInjector;
     private final RootLvtSuggester lvtAssignSuggester;
 
     public LvtNamer(final HypoContext context, final MappingSet mappings, final Reports reports) throws IOException {
         this.mappings = mappings;
         this.lvtTypeSuggester = new LvtTypeSuggester(context);
-        this.lvtAssignSuggester = new RootLvtSuggester(context, this.lvtTypeSuggester, reports);
+        this.reports = reports;
+        this.reportsInjector = Guice.createInjector(reports);
+        this.lvtAssignSuggester = new RootLvtSuggester(context, this.lvtTypeSuggester, this.reportsInjector);
     }
 
     public void processClass(final AsmClassData classData) throws IOException {
@@ -96,6 +104,7 @@ public class LvtNamer {
         // If it does, we need to keep track of the LVTs we inherit
         @Nullable AsmMethodData outerMethod = null;
         int @Nullable [] outerMethodParamLvtIndices = null;
+        @Nullable LambdaClosure lambdaClosure = null;
         final @Nullable List<LambdaClosure> lambdaCalls = method.get(HypoHydration.LAMBDA_CALLS);
         // Only track synthetic, non-synthetic means a method reference which does not behave as a closure (does not
         // capture LVT)
@@ -111,6 +120,7 @@ public class LvtNamer {
                         continue;
                     }
                     outerMethodParamLvtIndices = lambdaCall.getParamLvtIndices();
+                    lambdaClosure = lambdaCall;
                     // there can only be 1 outer method
                     break;
                 }
@@ -177,6 +187,22 @@ public class LvtNamer {
         final Optional<MethodMapping> methodMapping = this.mappings
                 .getClassMapping(parentClass.name())
                 .flatMap(c -> c.getMethodMapping(method.name(), method.descriptorText()));
+
+        final @Nullable ClassData superClass = parentClass.superClass();
+
+        if (this.reports.shouldGenerate(ReportType.MISSING_METHOD_PARAM)) {
+            this.reportsInjector
+                    .getInstance(MissingMethodParam.class)
+                    .handleCheckingMappings(
+                            method,
+                            parentClass,
+                            superClass,
+                            lambdaCalls,
+                            methodMapping.orElse(null),
+                            outerMethodParamLvtIndices,
+                            lambdaClosure,
+                            localClassClosure);
+        }
 
         // If there's no LVT table there's nothing for us to process
         if (node.localVariables == null) {
