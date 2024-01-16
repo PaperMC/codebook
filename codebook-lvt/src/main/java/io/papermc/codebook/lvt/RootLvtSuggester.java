@@ -182,13 +182,16 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
             new BoxMethod("java/lang/Float", "floatValue", "()F"),
             new BoxMethod("java/lang/Double", "doubleValue", "()D"),
             new BoxMethod("java/lang/Boolean", "booleanValue", "()Z"),
-            new BoxMethod("java/lang/Character", "charValue", "()C")
-    );
-    private static final Set<String> BOX_METHOD_NAMES = BOX_METHODS.stream().map(BoxMethod::name).collect(Collectors.toUnmodifiableSet());
+            new BoxMethod("java/lang/Character", "charValue", "()C"));
+    private static final Set<String> BOX_METHOD_NAMES =
+            BOX_METHODS.stream().map(BoxMethod::name).collect(Collectors.toUnmodifiableSet());
 
     private record BoxMethod(String owner, String name, String desc) {
         boolean is(final MethodInsnNode node) {
-            return this.owner.equals(node.owner) && this.name.equals(node.name) && this.desc.equals(node.desc) && !node.itf;
+            return this.owner.equals(node.owner)
+                    && this.name.equals(node.name)
+                    && this.desc.equals(node.desc)
+                    && !node.itf;
         }
     }
 
@@ -198,7 +201,8 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
             final int op = prev.getOpcode();
             if (op == Opcodes.INVOKEVIRTUAL) {
                 final MethodInsnNode methodInsnNode = (MethodInsnNode) prev;
-                if (BOX_METHOD_NAMES.contains(methodInsnNode.name) && BOX_METHODS.stream().anyMatch(bm -> bm.is(methodInsnNode))) {
+                if (BOX_METHOD_NAMES.contains(methodInsnNode.name)
+                        && BOX_METHODS.stream().anyMatch(bm -> bm.is(methodInsnNode))) {
                     prev = prev.getPrevious();
                     if (prev != null && prev.getOpcode() == Opcodes.CHECKCAST) {
                         return prev.getPrevious();
