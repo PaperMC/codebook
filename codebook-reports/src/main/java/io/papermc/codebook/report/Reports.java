@@ -72,6 +72,10 @@ public class Reports extends AbstractModule {
         }
     }
 
+    public boolean shouldGenerate(final ReportType reportType) {
+        return this.typesToGenerate.contains(reportType);
+    }
+
     @Override
     protected void configure() {
         this.reports.values().forEach(this::bindReport);
