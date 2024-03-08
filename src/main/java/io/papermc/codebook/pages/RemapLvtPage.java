@@ -35,17 +35,18 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.cadixdev.lorenz.MappingSet;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class RemapLvtPage extends CodeBookPage {
 
     private final HypoContext context;
-    private final MappingSet paramMappings;
+    private final @Nullable MappingSet paramMappings;
     private final Reports reports;
 
     @Inject
     public RemapLvtPage(
             @Hypo final HypoContext hypoContext,
-            @ParamMappings final MappingSet paramMappings,
+            @ParamMappings @Nullable final MappingSet paramMappings,
             @Report final Reports reports) {
         this.context = hypoContext;
         this.paramMappings = paramMappings;
@@ -54,6 +55,10 @@ public final class RemapLvtPage extends CodeBookPage {
 
     @Override
     public void exec() {
+        if (this.paramMappings == null) {
+            return;
+        }
+
         final LvtNamer lvtNamer;
         try {
             lvtNamer = new LvtNamer(this.context, this.paramMappings, this.reports);
