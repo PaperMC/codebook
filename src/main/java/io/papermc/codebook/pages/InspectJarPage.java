@@ -53,6 +53,7 @@ import org.cadixdev.bombe.type.signature.FieldSignature;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.model.ClassMapping;
 import org.cadixdev.lorenz.model.MethodMapping;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.parchmentmc.feather.io.gson.MDCGsonAdapterFactory;
 import org.parchmentmc.feather.io.gson.SimpleVersionAdapter;
 import org.parchmentmc.feather.mapping.MappingDataContainer;
@@ -63,13 +64,13 @@ public final class InspectJarPage extends CodeBookPage {
 
     private final Path inputJar;
     private final List<Path> classpathJars;
-    private final Path paramMappings;
+    private final @Nullable Path paramMappings;
 
     @Inject
     public InspectJarPage(
             @InputJar final Path inputJar,
             @ClasspathJars final List<Path> classpathJars,
-            @ParamMappings final Path paramMappings) {
+            @ParamMappings @Nullable final Path paramMappings) {
         this.inputJar = inputJar;
         this.classpathJars = classpathJars;
         this.paramMappings = paramMappings;
@@ -77,22 +78,7 @@ public final class InspectJarPage extends CodeBookPage {
 
     @Override
     public void exec() {
-        final Gson gson = new GsonBuilder()
-                .registerTypeAdapterFactory(new MDCGsonAdapterFactory())
-                .registerTypeAdapter(SimpleVersion.class, new SimpleVersionAdapter())
-                .create();
-
-        final MappingDataContainer mappings;
-        try (final FileSystem fs = FileSystems.newFileSystem(this.paramMappings)) {
-            final Path jsonFile = fs.getPath("/parchment.json");
-            try (final BufferedReader reader = Files.newBufferedReader(jsonFile)) {
-                mappings = gson.fromJson(reader, VersionedMappingDataContainer.class);
-            }
-        } catch (final IOException e) {
-            throw new UnexpectedException("Failed to read param mappings file", e);
-        }
-
-        final MappingSet lorenzMappings = this.toLorenz(mappings);
+        final MappingSet lorenzMappings = this.loadMappings();
 
         final HypoContext ctx;
 
@@ -119,15 +105,39 @@ public final class InspectJarPage extends CodeBookPage {
             throw new UnexpectedException("Failed to hydrate data model", e);
         }
 
-        // Fill in any missing mapping information
-        final MappingSet completedMappings = ChangeChain.create()
-                .addLink(
-                        CopyMappingsDown.createWithoutOverwrite(),
-                        CopyLambdaParametersDown.createWithoutOverwrite(),
-                        CopyRecordParameters.create())
-                .applyChain(lorenzMappings, MappingsCompletionManager.create(ctx));
+        if (this.paramMappings != null) {
+            // Fill in any missing mapping information
+            final MappingSet completedMappings = ChangeChain.create()
+                    .addLink(
+                            CopyMappingsDown.createWithoutOverwrite(),
+                            CopyLambdaParametersDown.createWithoutOverwrite(),
+                            CopyRecordParameters.create())
+                    .applyChain(lorenzMappings, MappingsCompletionManager.create(ctx));
 
-        this.bind(ParamMappings.KEY).to(completedMappings);
+            this.bind(ParamMappings.KEY).to(completedMappings);
+        } else {
+            this.bind(ParamMappings.KEY).to(null);
+        }
+    }
+
+    private MappingSet loadMappings() {
+        if (this.paramMappings == null) {
+            return MappingSet.create();
+        }
+
+        final Gson gson = new GsonBuilder()
+                .registerTypeAdapterFactory(new MDCGsonAdapterFactory())
+                .registerTypeAdapter(SimpleVersion.class, new SimpleVersionAdapter())
+                .create();
+
+        try (final FileSystem fs = FileSystems.newFileSystem(this.paramMappings)) {
+            final Path jsonFile = fs.getPath("/parchment.json");
+            try (final BufferedReader reader = Files.newBufferedReader(jsonFile)) {
+                return this.toLorenz(gson.fromJson(reader, VersionedMappingDataContainer.class));
+            }
+        } catch (final IOException e) {
+            throw new UnexpectedException("Failed to read param mappings file", e);
+        }
     }
 
     private MappingSet toLorenz(final MappingDataContainer container) {

@@ -74,7 +74,7 @@ public final class Main implements Callable<Integer> {
                 hidden = true)
         private @Nullable Path reportsDir;
 
-        @CommandLine.ArgGroup(multiplicity = "1")
+        @CommandLine.ArgGroup(multiplicity = "1", exclusive = false)
         private SelectedReports selectedReports;
 
         static final class SelectedReports {
