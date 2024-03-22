@@ -23,6 +23,7 @@
 package io.papermc.codebook.report;
 
 import com.google.inject.AbstractModule;
+import io.papermc.codebook.report.type.CheckCastWraps;
 import io.papermc.codebook.report.type.MissingMethodLvtSuggestion;
 import io.papermc.codebook.report.type.MissingMethodParam;
 import io.papermc.codebook.report.type.Report;
@@ -58,7 +59,8 @@ public class Reports extends AbstractModule {
         this.typesToGenerate = typesToGenerate;
         this.reports = Map.of(
                 ReportType.MISSING_METHOD_LVT_SUGGESTION, new MissingMethodLvtSuggestion(),
-                ReportType.MISSING_METHOD_PARAM, new MissingMethodParam());
+                ReportType.MISSING_METHOD_PARAM, new MissingMethodParam(),
+                ReportType.CHECK_CAST_WRAPS, new CheckCastWraps());
     }
 
     public void generateReports() throws IOException {
