@@ -31,6 +31,10 @@ tasks.jar {
     }
 }
 
+tasks.named("build") {
+    dependsOn(tasks.named("shadowJar"))
+}
+
 val os: OperatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
 if (os.isLinux || os.isMacOsX) {
     tasks.register("executableJar") {

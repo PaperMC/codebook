@@ -36,5 +36,6 @@ jobs:
           draft: false
           files: |
             build/libs/*.jar
+            codebook-cli/build/libs/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
