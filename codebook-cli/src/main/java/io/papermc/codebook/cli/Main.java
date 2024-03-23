@@ -270,7 +270,8 @@ public final class Main implements Callable<Integer> {
 
         @CommandLine.Option(
                 names = {"-c", "--input-classpath"},
-                split = ":",
+                split = ":(?!\\\\)",
+                splitSynopsisLabel = ":",
                 paramLabel = "<jar>",
                 description =
                         "Additional classpath jars, provided in standard classpath format (use : to separate jars on the path).")
@@ -308,6 +309,12 @@ public final class Main implements Callable<Integer> {
             description = "Don't suppress logging.",
             defaultValue = "false")
     private boolean verbose;
+
+    @CommandLine.Option(
+            names = {"--temp-dir"},
+            paramLabel = "<temp-dir>",
+            description = "The temp dir to work in.")
+    private @Nullable Path tempDir;
 
     public Main() {}
 
@@ -462,6 +469,7 @@ public final class Main implements Callable<Integer> {
         }
 
         return CodeBookContext.builder()
+                .tempDir(tempDir)
                 .remapperJar(remapper)
                 .mappings(mappings)
                 .paramMappings(paramMappings)
