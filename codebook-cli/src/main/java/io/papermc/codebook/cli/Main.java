@@ -469,7 +469,7 @@ public final class Main implements Callable<Integer> {
         }
 
         return CodeBookContext.builder()
-                .tempDir(tempDir)
+                .tempDir(this.tempDir)
                 .remapperJar(remapper)
                 .mappings(mappings)
                 .paramMappings(paramMappings)
