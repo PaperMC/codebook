@@ -25,7 +25,9 @@ package io.papermc.codebook.lvt.suggestion;
 import static io.papermc.codebook.lvt.LvtUtil.tryMatchPrefix;
 
 import dev.denwav.hypo.model.data.types.PrimitiveType;
+import io.papermc.codebook.lvt.suggestion.context.AssignmentContext;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.SuggesterContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.util.List;
@@ -41,7 +43,11 @@ public class VerbPrefixBooleanSuggester implements LvtSuggester {
 
     @Override
     public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container) {
+            final MethodCallContext call,
+            final MethodInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester) {
         if (call.data().returnType() != PrimitiveType.BOOLEAN) {
             return null;
         }
