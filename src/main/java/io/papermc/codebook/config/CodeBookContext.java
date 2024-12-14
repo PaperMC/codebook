@@ -22,6 +22,7 @@
 
 package io.papermc.codebook.config;
 
+import dev.denwav.hypo.core.HypoConfig;
 import io.papermc.codebook.report.Reports;
 import io.soabase.recordbuilder.core.RecordBuilder;
 import java.nio.file.Path;
@@ -42,7 +43,8 @@ public record CodeBookContext(
         @NotNull Path outputJar,
         boolean overwrite,
         @NotNull CodeBookInput input,
-        @Nullable @org.jetbrains.annotations.Nullable Reports reports) {
+        @Nullable @org.jetbrains.annotations.Nullable Reports reports,
+        @Nullable @org.jetbrains.annotations.Nullable HypoConfig hypoConfig) {
 
     public static CodeBookContextBuilder builder() {
         return CodeBookContextBuilder.builder();

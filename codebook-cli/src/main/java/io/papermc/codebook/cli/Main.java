@@ -22,6 +22,7 @@
 
 package io.papermc.codebook.cli;
 
+import dev.denwav.hypo.core.HypoConfig;
 import io.papermc.codebook.CodeBook;
 import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.config.CodeBookCoordsResource;
@@ -316,6 +317,13 @@ public final class Main implements Callable<Integer> {
             description = "The temp dir to work in.")
     private @Nullable Path tempDir;
 
+    @CommandLine.Option(
+            names = {"--hypo-parallelism"},
+            paramLabel = "<parallelism-level>",
+            defaultValue = "-1",
+            description = "The parallelism level to use for Hypo executions.")
+    private int hypoConcurrency;
+
     public Main() {}
 
     public static void main(final String[] args) {
@@ -468,6 +476,12 @@ public final class Main implements Callable<Integer> {
             reports = new Reports(this.reports.reportsDir, reportsToGenerate);
         }
 
+        @Nullable HypoConfig hypoConfig = null;
+        if (this.hypoConcurrency != -1) {
+            hypoConfig =
+                    HypoConfig.builder().withParallelism(this.hypoConcurrency).build();
+        }
+
         return CodeBookContext.builder()
                 .tempDir(this.tempDir)
                 .remapperJar(remapper)
@@ -479,6 +493,7 @@ public final class Main implements Callable<Integer> {
                 .overwrite(this.forceWrite)
                 .input(input)
                 .reports(reports)
+                .hypoConfig(hypoConfig)
                 .build();
     }
 

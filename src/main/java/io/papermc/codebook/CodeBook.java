@@ -28,6 +28,7 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.util.Providers;
 import dev.denwav.hypo.asm.AsmOutputWriter;
+import dev.denwav.hypo.core.HypoConfig;
 import dev.denwav.hypo.core.HypoContext;
 import io.papermc.codebook.config.CodeBookClasspathResource;
 import io.papermc.codebook.config.CodeBookContext;
@@ -188,6 +189,13 @@ public final class CodeBook {
                 } else {
                     this.bind(CodeBookPage.Report.KEY).toInstance(Reports.NOOP);
                     this.install(Reports.NOOP);
+                }
+
+                if (CodeBook.this.ctx.hypoConfig() != null) {
+                    this.bind(CodeBookPage.Hypo.CONFIG_KEY).toInstance(CodeBook.this.ctx.hypoConfig());
+                } else {
+                    this.bind(CodeBookPage.Hypo.CONFIG_KEY)
+                            .toInstance(HypoConfig.builder().build());
                 }
             }
         };

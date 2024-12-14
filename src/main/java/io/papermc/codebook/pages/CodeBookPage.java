@@ -29,6 +29,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.util.Modules;
 import com.google.inject.util.Providers;
+import dev.denwav.hypo.core.HypoConfig;
 import dev.denwav.hypo.core.HypoContext;
 import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.report.Reports;
@@ -156,6 +157,7 @@ public abstract class CodeBookPage {
     @Retention(RetentionPolicy.RUNTIME)
     public @interface Hypo {
         Key<HypoContext> KEY = Key.get(HypoContext.class, Hypo.class);
+        Key<HypoConfig> CONFIG_KEY = Key.get(HypoConfig.class, Hypo.class);
     }
 
     @Qualifier
