@@ -33,6 +33,7 @@ import dev.denwav.hypo.asm.hydrate.BridgeMethodHydrator;
 import dev.denwav.hypo.asm.hydrate.LambdaCallHydrator;
 import dev.denwav.hypo.asm.hydrate.LocalClassHydrator;
 import dev.denwav.hypo.asm.hydrate.SuperConstructorHydrator;
+import dev.denwav.hypo.core.HypoConfig;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.HydrationManager;
 import dev.denwav.hypo.mappings.ChangeChain;
@@ -65,15 +66,18 @@ public final class InspectJarPage extends CodeBookPage {
     private final Path inputJar;
     private final List<Path> classpathJars;
     private final @Nullable Path paramMappings;
+    private final HypoConfig config;
 
     @Inject
     public InspectJarPage(
             @InputJar final Path inputJar,
             @ClasspathJars final List<Path> classpathJars,
-            @ParamMappings @Nullable final Path paramMappings) {
+            @ParamMappings @Nullable final Path paramMappings,
+            @Hypo final HypoConfig config) {
         this.inputJar = inputJar;
         this.classpathJars = classpathJars;
         this.paramMappings = paramMappings;
+        this.config = config;
     }
 
     @Override
@@ -87,6 +91,7 @@ public final class InspectJarPage extends CodeBookPage {
                     .withProvider(AsmClassDataProvider.of(fromJar(this.inputJar)))
                     .withContextProvider(AsmClassDataProvider.of(fromJars(this.classpathJars.toArray(new Path[0]))))
                     .withContextProvider(AsmClassDataProvider.of(ofJdk()))
+                    .withConfig(this.config)
                     .build();
         } catch (final IOException e) {
             throw new UnexpectedException("Failed to open jar files", e);

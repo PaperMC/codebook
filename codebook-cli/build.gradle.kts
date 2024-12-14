@@ -12,6 +12,9 @@ plugins {
 dependencies {
     implementation(projects.codebook)
 
+    implementation(platform(libs.hypo.platform))
+    implementation(libs.bundles.hypo.full)
+
     implementation(libs.picocli)
     implementation(libs.slf4j)
     implementation(libs.slf4j.jul)
