@@ -5,7 +5,7 @@ licenser = "0.6.1"
 slf4j = "2.0.7"
 lorenz = "0.5.7"
 unpick = "2.3.0"
-asm = "9.5"
+asm = "9.7.1"
 feather = "1.1.0"
 recordBuilder = "37"
 
