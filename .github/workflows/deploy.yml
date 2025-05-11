@@ -16,7 +16,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Deploy
-        run: ./gradlew build --stacktracebuild publishCodebookPublicationToPapermcRepository --stacktrace
+        run: ./gradlew build publishCodebookPublicationToPapermcRepository --stacktrace
         env:
           ORG_GRADLE_PROJECT_papermcUsername: ${{ secrets.NEXUS_USERNAME }}
           ORG_GRADLE_PROJECT_papermcPassword: ${{ secrets.NEXUS_PASSWORD }}
