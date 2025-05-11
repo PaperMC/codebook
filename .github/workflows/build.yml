@@ -16,7 +16,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: 17
-      - uses: gradle/wrapper-validation-action@v1
-      - uses: gradle/gradle-build-action@v2
-        with:
-          arguments: build --stacktrace
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build with Gradle
+        run: ./gradlew build --stacktrace
