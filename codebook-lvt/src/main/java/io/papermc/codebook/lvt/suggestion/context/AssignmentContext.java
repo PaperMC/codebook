@@ -20,10 +20,9 @@
  * USA
  */
 
-package io.papermc.codebook.report;
+package io.papermc.codebook.lvt.suggestion.context;
 
-public enum ReportType {
-    MISSING_METHOD_LVT_SUGGESTION,
-    MISSING_METHOD_PARAM,
-    CHECK_CAST_WRAPS;
-}
+import org.objectweb.asm.tree.LocalVariableNode;
+import org.objectweb.asm.tree.VarInsnNode;
+
+public record AssignmentContext(VarInsnNode assignmentNode, LocalVariableNode lvt) {}
