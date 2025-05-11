@@ -138,7 +138,7 @@ public final class LvtUtil {
         // UUID -> uuid
         // AABB -> aabb
         if (LvtUtil.isStringAllUppercase(simpleName)) {
-            return simpleName.toLowerCase();
+            return simpleName.toLowerCase(Locale.ROOT);
         }
 
         // Decapitalize
