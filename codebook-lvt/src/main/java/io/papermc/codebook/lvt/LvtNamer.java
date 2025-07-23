@@ -216,11 +216,10 @@ public class LvtNamer {
             }
 
             for (int i = 0; i < paramCount; i++) {
-                // always (i + 1) because abstract methods are never static
                 final int fi = i;
                 @Nullable
                 String paramName = methodMapping
-                        .flatMap(m -> m.getParameterMapping(fi + 1))
+                        .flatMap(m -> m.getParameterMapping(fromParamToLvtIndex(fi, method)))
                         .map(Mapping::getDeobfuscatedName)
                         .orElse(null);
 
@@ -475,6 +474,28 @@ public class LvtNamer {
             }
 
             currentIndex++;
+            currentLvtIndex++;
+            if (param == PrimitiveType.LONG || param == PrimitiveType.DOUBLE) {
+                currentLvtIndex++;
+            }
+        }
+
+        return -1;
+    }
+
+    /*
+     * Transform the given param index into a lvt index.
+     */
+    private static int fromParamToLvtIndex(final int paramIndex, final MethodData method) {
+        int currentLvtIndex = method.isStatic() ? 0 : 1;
+        int currentParamIndex = 0;
+
+        for (final JvmType param : method.params()) {
+            if (currentParamIndex == paramIndex) {
+                return currentLvtIndex;
+            }
+
+            currentParamIndex++;
             currentLvtIndex++;
             if (param == PrimitiveType.LONG || param == PrimitiveType.DOUBLE) {
                 currentLvtIndex++;
