@@ -4,7 +4,7 @@ plugins {
     java
     `maven-publish`
     id("com.diffplug.spotless")
-    id("org.cadixdev.licenser")
+    id("net.kyori.indra.licenser.spotless")
 }
 
 repositories {
@@ -47,12 +47,13 @@ spotless {
     }
 }
 
-license {
-    header.set(resources.text.fromFile(rootProject.layout.projectDirectory.file("header.txt")))
+indraSpotlessLicenser {
+  licenseHeaderFile(rootProject.layout.projectDirectory.file("header.txt"))
+  newLine(true)
 }
 
 val format by tasks.registering {
-    dependsOn(tasks.spotlessApply, tasks.licenseFormat)
+    dependsOn(tasks.spotlessApply)
     group = "format"
 }
 
