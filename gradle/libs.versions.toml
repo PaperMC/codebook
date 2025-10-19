@@ -32,7 +32,7 @@ guice = "com.google.inject:guice:7.0.0"
 inject = "jakarta.inject:jakarta.inject-api:2.0.1"
 guava = "com.google.guava:guava:32.1.2-jre"
 
-gson = "com.google.code.gson:gson:2.10.1"
+gson = "com.google.code.gson:gson:2.13.2"
 bytes = "at.favre.lib:bytes:1.6.1"
 
 asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
