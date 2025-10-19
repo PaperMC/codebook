@@ -10,7 +10,7 @@ feather = "1.1.0"
 recordBuilder = "37"
 
 junit = "6.0.0"
-mockito = "5.4.0"
+mockito = "5.20.0"
 
 [plugins]
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
