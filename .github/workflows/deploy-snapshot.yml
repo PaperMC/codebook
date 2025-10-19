@@ -32,5 +32,5 @@ jobs:
         if: endsWith(steps.get_version.outputs.version, '-SNAPSHOT')
         run: ./gradlew build publishCodebookPublicationToPapermcRepository --stacktrace
         env:
-          ORG_GRADLE_PROJECT_papermcUsername: ${{ secrets.NEXUS_USERNAME }}
-          ORG_GRADLE_PROJECT_papermcPassword: ${{ secrets.NEXUS_PASSWORD }}
+          ORG_GRADLE_PROJECT_papermcUsername: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ORG_GRADLE_PROJECT_papermcPassword: ${{ secrets.ARTIFACTORY_PASSWORD }}

@@ -18,8 +18,8 @@ jobs:
       - name: Deploy
         run: ./gradlew build publishCodebookPublicationToPapermcRepository --stacktrace
         env:
-          ORG_GRADLE_PROJECT_papermcUsername: ${{ secrets.NEXUS_USERNAME }}
-          ORG_GRADLE_PROJECT_papermcPassword: ${{ secrets.NEXUS_PASSWORD }}
+          ORG_GRADLE_PROJECT_papermcUsername: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ORG_GRADLE_PROJECT_papermcPassword: ${{ secrets.ARTIFACTORY_PASSWORD }}
       - name: Get tag name
         id: get_tag
         shell: bash
