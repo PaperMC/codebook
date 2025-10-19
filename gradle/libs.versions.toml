@@ -9,13 +9,13 @@ asm = "9.7.1"
 feather = "1.1.0"
 recordBuilder = "37"
 
-junit = "5.10.0"
+junit = "6.0.0"
 mockito = "5.4.0"
 
 [plugins]
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 licenser = { id = "net.kyori.indra.licenser.spotless", version.ref = "indra" }
-shadow = "com.github.johnrengelman.shadow:8.1.1"
+shadow = "com.gradleup.shadow:9.2.2"
 
 [libraries]
 gradle-spotless = { module = "com.diffplug.spotless:com.diffplug.spotless.gradle.plugin", version.ref = "spotless" }
@@ -60,6 +60,7 @@ recordBuilder-core = { module = "io.soabase.record-builder:record-builder-core",
 
 junit-api =  { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
 junit-engine =  { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit-launcher =  { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
 junit-params =  { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
 
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
