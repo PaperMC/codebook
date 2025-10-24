@@ -39,7 +39,6 @@ public record CodeBookContext(
         @Nullable @org.jetbrains.annotations.Nullable CodeBookResource mappings,
         @Nullable @org.jetbrains.annotations.Nullable CodeBookResource paramMappings,
         @Nullable @org.jetbrains.annotations.Nullable CodeBookResource unpickDefinitions,
-        @Nullable @org.jetbrains.annotations.Nullable CodeBookResource constantsJar,
         @NotNull Path outputJar,
         boolean overwrite,
         @NotNull CodeBookInput input,

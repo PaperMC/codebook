@@ -22,58 +22,105 @@
 
 package io.papermc.codebook.pages;
 
-import io.papermc.codebook.exceptions.UnexpectedException;
-import io.papermc.codebook.util.IOUtil;
+import daomephsta.unpick.api.ConstantUninliner;
+import daomephsta.unpick.api.classresolvers.ClassResolvers;
+import daomephsta.unpick.api.classresolvers.IClassResolver;
+import daomephsta.unpick.api.constantgroupers.ConstantGroupers;
+import dev.denwav.hypo.asm.AsmClassData;
+import dev.denwav.hypo.core.HypoContext;
+import dev.denwav.hypo.model.data.ClassData;
 import jakarta.inject.Inject;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipFile;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
 
-public final class UnpickPage extends CodeBookPage {
+public final class UnpickPage extends AsmProcessorPage {
 
-    private final Path inputJar;
     private final List<Path> classpath;
-    private final Path tempDir;
     private final @Nullable Path unpickDefinitions;
-    private final @Nullable Path constantsJar;
+    private @MonotonicNonNull ConstantUninliner uninliner;
 
     @Inject
     public UnpickPage(
-            @InputJar final Path inputJar,
+            @Hypo final HypoContext context,
             @ClasspathJars final List<Path> classpath,
-            @TempDir final Path tempDir,
-            @UnpickDefinitions final @Nullable Path unpickDefinitions,
-            @ConstantsJar final @Nullable Path constantsJar) {
-        this.inputJar = inputJar;
+            @UnpickDefinitions final @Nullable Path unpickDefinitions) {
+        super(context);
         this.classpath = classpath;
-        this.tempDir = tempDir;
         this.unpickDefinitions = unpickDefinitions;
-        this.constantsJar = constantsJar;
     }
 
+    @Override
     public void exec() {
-        if (this.unpickDefinitions == null || this.constantsJar == null) {
+        if (this.unpickDefinitions == null) {
             return;
         }
 
-        final Path outputJar = this.tempDir.resolve("unpicked.jar");
+        IClassResolver classResolver = new IClassResolver() {
+            @Override
+            public @Nullable ClassReader resolveClass(final String internalName) {
+                try {
+                    final @Nullable ClassData cls =
+                            UnpickPage.this.context.getContextProvider().findClass(internalName);
+                    if (cls instanceof final AsmClassData asmClassData) {
+                        // TODO - do something smarter here to avoid re-serializing classes all the time
+                        final ClassWriter classWriter = new ClassWriter(0);
+                        asmClassData.getNode().accept(classWriter);
+                        return new ClassReader(classWriter.toByteArray());
+                    }
+                } catch (final IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+                return null;
+            }
+        };
 
-        final var args = new ArrayList<String>();
-        args.addAll(List.of(
-                IOUtil.absolutePathString(this.inputJar),
-                IOUtil.absolutePathString(outputJar),
-                IOUtil.absolutePathString(this.unpickDefinitions),
-                IOUtil.absolutePathString(this.constantsJar)));
-        args.addAll(this.classpath.stream().map(IOUtil::absolutePathString).toList());
+        final List<ZipFile> zips = new ArrayList<>();
+        try (final BufferedReader definitionsReader = Files.newBufferedReader(this.unpickDefinitions)) {
+            for (final Path classpathJar : this.classpath) {
+                final ZipFile zip = new ZipFile(classpathJar.toFile());
+                zips.add(zip);
+                classResolver = classResolver.chain(ClassResolvers.jar(zip));
+            }
 
-        try {
-            daomephsta.unpick.cli.Main.main(args.toArray(new String[0]));
+            classResolver = classResolver.chain(ClassResolvers.classpath());
+
+            this.uninliner = ConstantUninliner.builder()
+                    .grouper(ConstantGroupers.dataDriven()
+                            .classResolver(classResolver)
+                            .mappingSource(definitionsReader)
+                            .build())
+                    .classResolver(classResolver)
+                    .build();
+
+            this.processClasses();
         } catch (final IOException e) {
-            throw new UnexpectedException("Failed to run unpick", e);
+            throw new UncheckedIOException(e);
+        } finally {
+            for (final ZipFile zip : zips) {
+                try {
+                    zip.close();
+                } catch (final IOException e) {
+                    // Ignore
+                }
+            }
         }
+    }
 
-        this.bind(InputJar.KEY).to(outputJar);
+    @Override
+    protected void processClass(final AsmClassData classData) {
+        if (this.uninliner == null) {
+            return;
+        }
+        this.uninliner.transform(classData.getNode());
     }
 }

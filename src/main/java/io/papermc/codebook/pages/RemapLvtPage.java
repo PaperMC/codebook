@@ -24,31 +24,26 @@ package io.papermc.codebook.pages;
 
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.core.HypoContext;
-import dev.denwav.hypo.model.HypoModelUtil;
-import dev.denwav.hypo.model.data.ClassData;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.lvt.LvtNamer;
 import io.papermc.codebook.report.Reports;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import org.cadixdev.lorenz.MappingSet;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public final class RemapLvtPage extends CodeBookPage {
+public final class RemapLvtPage extends AsmProcessorPage {
 
-    private final HypoContext context;
     private final @Nullable MappingSet paramMappings;
     private final Reports reports;
+    private @Nullable LvtNamer lvtNamer;
 
     @Inject
     public RemapLvtPage(
             @Hypo final HypoContext hypoContext,
             @ParamMappings @Nullable final MappingSet paramMappings,
             @Report final Reports reports) {
-        this.context = hypoContext;
+        super(hypoContext);
         this.paramMappings = paramMappings;
         this.reports = reports;
     }
@@ -59,37 +54,19 @@ public final class RemapLvtPage extends CodeBookPage {
             return;
         }
 
-        final LvtNamer lvtNamer;
         try {
-            lvtNamer = new LvtNamer(this.context, this.paramMappings, this.reports);
+            this.lvtNamer = new LvtNamer(this.context, this.paramMappings, this.reports);
         } catch (final IOException e) {
             throw new UnexpectedException("Failed to create LVT namer", e);
         }
 
-        this.remapLvt(lvtNamer);
+        this.processClasses();
     }
 
-    private void remapLvt(final LvtNamer lvtNamer) {
-        final ArrayList<Future<?>> tasks = new ArrayList<>();
-        for (final ClassData classData : this.context.getProvider().allClasses()) {
-            final var task = this.context.getExecutor().submit(() -> {
-                try {
-                    lvtNamer.processClass((AsmClassData) classData);
-                } catch (final Exception e) {
-                    throw HypoModelUtil.rethrow(e);
-                }
-            });
-            tasks.add(task);
-        }
-
-        try {
-            for (final Future<?> task : tasks) {
-                task.get();
-            }
-        } catch (final ExecutionException e) {
-            throw new UnexpectedException("Failed to remap LVT", e.getCause());
-        } catch (final InterruptedException e) {
-            throw new UnexpectedException("LVT remap interrupted", e);
+    @Override
+    protected void processClass(final AsmClassData classData) throws IOException {
+        if (this.lvtNamer != null) {
+            this.lvtNamer.processClass(classData);
         }
     }
 }
