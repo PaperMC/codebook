@@ -138,7 +138,8 @@ public final class UnpickPage extends AsmProcessorPage {
                                             .accept(new ForwardingUnpickV3Visitor(visitor) {
                                                 // Filter out any groups where all constants reference missing classes
                                                 // (client classes when applying to the server)
-                                                // This may need further refinement to handle applying outdated definitions leniently
+                                                // This may need further refinement to handle applying outdated
+                                                // definitions leniently
                                                 @Override
                                                 public void visitGroupDefinition(
                                                         final GroupDefinition groupDefinition) {
