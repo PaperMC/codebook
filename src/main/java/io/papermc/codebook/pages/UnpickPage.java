@@ -30,6 +30,7 @@ import daomephsta.unpick.constantmappers.datadriven.parser.v3.UnpickV3Reader;
 import daomephsta.unpick.constantmappers.datadriven.tree.ForwardingUnpickV3Visitor;
 import daomephsta.unpick.constantmappers.datadriven.tree.GroupDefinition;
 import daomephsta.unpick.constantmappers.datadriven.tree.expr.Expression;
+import daomephsta.unpick.constantmappers.datadriven.tree.expr.ExpressionVisitor;
 import daomephsta.unpick.constantmappers.datadriven.tree.expr.FieldExpression;
 import dev.denwav.hypo.asm.AsmClassData;
 import dev.denwav.hypo.core.HypoContext;
@@ -133,28 +134,30 @@ public final class UnpickPage extends AsmProcessorPage {
                                     new UnpickV3Reader(definitionsReader)
                                             .accept(new ForwardingUnpickV3Visitor(visitor) {
                                                 // Filter out any groups where all constants reference missing classes
-                                                // (client classes when applying to the server)
-                                                // This may need further refinement to handle applying outdated
-                                                // definitions leniently
+                                                // (client classes when applying to the server or outdated definitions)
                                                 @Override
                                                 public void visitGroupDefinition(
                                                         final GroupDefinition groupDefinition) {
                                                     final List<Expression> constants =
                                                             new ArrayList<>(groupDefinition.constants());
                                                     for (final Expression constant : groupDefinition.constants()) {
-                                                        if (constant instanceof final FieldExpression field) {
-                                                            try {
-                                                                final @Nullable ClassData clsData = UnpickPage.this
-                                                                        .context
-                                                                        .getContextProvider()
-                                                                        .findClass(field.className);
-                                                                if (clsData == null) {
-                                                                    constants.remove(constant);
+                                                        constant.accept(new ExpressionVisitor() {
+                                                            @Override
+                                                            public void visitFieldExpression(
+                                                                    final FieldExpression fieldExpression) {
+                                                                try {
+                                                                    final @Nullable ClassData clsData = UnpickPage.this
+                                                                            .context
+                                                                            .getContextProvider()
+                                                                            .findClass(fieldExpression.className);
+                                                                    if (clsData == null) {
+                                                                        constants.remove(constant);
+                                                                    }
+                                                                } catch (final IOException e) {
+                                                                    throw new UncheckedIOException(e);
                                                                 }
-                                                            } catch (final IOException e) {
-                                                                throw new UncheckedIOException(e);
                                                             }
-                                                        }
+                                                        });
                                                     }
                                                     if (!constants.isEmpty()) {
                                                         super.visitGroupDefinition(
