@@ -48,8 +48,7 @@ import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.tree.ClassNode;
 
 public final class UnpickPage extends AsmProcessorPage {
 
@@ -103,15 +102,12 @@ public final class UnpickPage extends AsmProcessorPage {
     private void unpick(final Path definitionsPath, final List<ZipFile> zips) throws IOException {
         IClassResolver classResolver = new IClassResolver() {
             @Override
-            public @Nullable ClassReader resolveClass(final String internalName) {
+            public @Nullable ClassNode resolveClass(final String internalName) {
                 try {
                     final @Nullable ClassData cls =
                             UnpickPage.this.context.getContextProvider().findClass(internalName);
                     if (cls instanceof final AsmClassData asmClassData) {
-                        // TODO - do something smarter here to avoid re-serializing classes all the time
-                        final ClassWriter classWriter = new ClassWriter(0);
-                        asmClassData.getNode().accept(classWriter);
-                        return new ClassReader(classWriter.toByteArray());
+                        return asmClassData.getNode();
                     }
                 } catch (final IOException e) {
                     throw new UncheckedIOException(e);
