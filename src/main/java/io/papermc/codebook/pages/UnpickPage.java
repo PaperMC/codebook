@@ -33,10 +33,13 @@ import jakarta.inject.Inject;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -65,7 +68,16 @@ public final class UnpickPage extends AsmProcessorPage {
             return;
         }
 
-        IClassResolver classResolver = new IClassResolver() {
+        boolean isZip;
+        try (final ZipFile zf = new ZipFile(this.unpickDefinitions.toFile())) {
+            isZip = true;
+        } catch (final ZipException e) {
+            isZip = false;
+        } catch (final IOException e) {
+            throw new UncheckedIOException(e);
+        }
+
+        final IClassResolver classResolver = new IClassResolver() {
             @Override
             public @Nullable ClassReader resolveClass(final String internalName) {
                 try {
@@ -85,7 +97,26 @@ public final class UnpickPage extends AsmProcessorPage {
         };
 
         final List<ZipFile> zips = new ArrayList<>();
-        try (final BufferedReader definitionsReader = Files.newBufferedReader(this.unpickDefinitions)) {
+
+        if (isZip) {
+            try (final FileSystem definitionsFs = FileSystems.newFileSystem(this.unpickDefinitions)) {
+                final Path definitionsPath = definitionsFs.getPath("extras/definitions.unpick");
+                this.unpick(definitionsPath, zips, classResolver);
+            } catch (final IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        } else {
+            try {
+                this.unpick(this.unpickDefinitions, zips, classResolver);
+            } catch (final IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+    }
+
+    private void unpick(final Path definitionsPath, final List<ZipFile> zips, IClassResolver classResolver)
+            throws IOException {
+        try (final BufferedReader definitionsReader = Files.newBufferedReader(definitionsPath)) {
             for (final Path classpathJar : this.classpath) {
                 final ZipFile zip = new ZipFile(classpathJar.toFile());
                 zips.add(zip);
@@ -103,8 +134,6 @@ public final class UnpickPage extends AsmProcessorPage {
                     .build();
 
             this.processClasses();
-        } catch (final IOException e) {
-            throw new UncheckedIOException(e);
         } finally {
             for (final ZipFile zip : zips) {
                 try {

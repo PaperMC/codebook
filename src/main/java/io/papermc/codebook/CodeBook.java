@@ -144,7 +144,11 @@ public final class CodeBook {
 
         final @Nullable Path unpickDefinitions;
         if (this.ctx.unpickDefinitions() != null) {
-            unpickDefinitions = this.ctx.unpickDefinitions().resolveResourceFile(tempDir);
+            if (this.ctx.unpickDefinitions().equals(this.ctx.paramMappings())) {
+                unpickDefinitions = paramMappingsFile;
+            } else {
+                unpickDefinitions = this.ctx.unpickDefinitions().resolveResourceFile(tempDir);
+            }
         } else {
             unpickDefinitions = null;
         }
