@@ -77,7 +77,27 @@ public final class UnpickPage extends AsmProcessorPage {
             throw new UncheckedIOException(e);
         }
 
-        final IClassResolver classResolver = new IClassResolver() {
+        final List<ZipFile> zips = new ArrayList<>();
+
+        if (isZip) {
+            try (final FileSystem definitionsFs = FileSystems.newFileSystem(this.unpickDefinitions)) {
+                final Path definitionsPath = definitionsFs.getPath("extras/definitions.unpick");
+                this.unpick(definitionsPath, zips, this.context);
+            } catch (final IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        } else {
+            try {
+                this.unpick(this.unpickDefinitions, zips, this.context);
+            } catch (final IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+    }
+
+    private void unpick(final Path definitionsPath, final List<ZipFile> zips, final HypoContext context)
+            throws IOException {
+        IClassResolver classResolver = new IClassResolver() {
             @Override
             public @Nullable ClassReader resolveClass(final String internalName) {
                 try {
@@ -96,26 +116,6 @@ public final class UnpickPage extends AsmProcessorPage {
             }
         };
 
-        final List<ZipFile> zips = new ArrayList<>();
-
-        if (isZip) {
-            try (final FileSystem definitionsFs = FileSystems.newFileSystem(this.unpickDefinitions)) {
-                final Path definitionsPath = definitionsFs.getPath("extras/definitions.unpick");
-                this.unpick(definitionsPath, zips, classResolver);
-            } catch (final IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        } else {
-            try {
-                this.unpick(this.unpickDefinitions, zips, classResolver);
-            } catch (final IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
-    }
-
-    private void unpick(final Path definitionsPath, final List<ZipFile> zips, IClassResolver classResolver)
-            throws IOException {
         try (final BufferedReader definitionsReader = Files.newBufferedReader(definitionsPath)) {
             for (final Path classpathJar : this.classpath) {
                 final ZipFile zip = new ZipFile(classpathJar.toFile());
