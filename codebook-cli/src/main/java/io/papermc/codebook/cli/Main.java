@@ -175,10 +175,7 @@ public final class Main implements Callable<Integer> {
     private @Nullable UnpickOptions unpick;
 
     static final class UnpickOptions {
-        @CommandLine.ArgGroup(
-                heading =
-                        "%n%nUnpick requires unpick definitions. When specifying unpick definitions, unpick constants are also required.%n",
-                multiplicity = "1")
+        @CommandLine.ArgGroup(heading = "%n%nUnpick requires unpick definitions.%n", multiplicity = "1")
         private @Nullable UnpickDefinitionsOptions unpickDefinitions;
 
         static final class UnpickDefinitionsOptions {
@@ -199,32 +196,6 @@ public final class Main implements Callable<Integer> {
                     paramLabel = "<unpick-uri>",
                     description = "A download URL for the unpick definitions to use for the unpick process.")
             private @Nullable URI unpickUri;
-        }
-
-        @CommandLine.ArgGroup(
-                heading =
-                        "%n%nUnpick requires a constants jar.  When specifying unpick constants, unpick definitions are also required.%n",
-                multiplicity = "1")
-        private @Nullable ConstantsJarOptions constantsJar;
-
-        static final class ConstantsJarOptions {
-            @CommandLine.Option(
-                    names = "--constants-coords",
-                    paramLabel = "<constants-coords>",
-                    description = "The Maven coordinates for the constants jar to use for the unpick process.")
-            private @Nullable String constantsCoords;
-
-            @CommandLine.Option(
-                    names = {"--constants-file"},
-                    paramLabel = "<constants-jar-file>",
-                    description = "The constants jar to use for the unpick process.")
-            private @Nullable Path constantsFile;
-
-            @CommandLine.Option(
-                    names = "--constants-uri",
-                    paramLabel = "<constants-uri>",
-                    description = "A download URL for the constants jar to use for the unpick process.")
-            private @Nullable URI constantsUri;
         }
     }
 
@@ -440,7 +411,7 @@ public final class Main implements Callable<Integer> {
                 p -> new Coords(p.paramsCoords, null, "zip", this.paramsMavenBaseUrl));
 
         final @Nullable CodeBookResource unpickDefinitions = this.getResource(
-                "unpick_definitions.jar",
+                "definitions.unpick",
                 this.unpick != null ? this.unpick.unpickDefinitions : null,
                 d -> d.unpickFile,
                 d -> d.unpickUri,
@@ -450,19 +421,6 @@ public final class Main implements Callable<Integer> {
                                 "Cannot define unpick definitions Maven coordinates without also setting --unpick-maven-base-url");
                     }
                     return new Coords(d.unpickCoords, "constants", null, this.unpickMavenBaseUrl);
-                });
-
-        final @Nullable CodeBookResource constantJar = this.getResource(
-                "unpick_constants.jar",
-                this.unpick != null ? this.unpick.constantsJar : null,
-                c -> c.constantsFile,
-                c -> c.constantsUri,
-                c -> {
-                    if (this.unpickMavenBaseUrl == null) {
-                        throw new UserErrorException(
-                                "Cannot define unpick constants Maven coordinates without also setting --unpick-maven-base-url");
-                    }
-                    return new Coords(c.constantsCoords, "constants", null, this.unpickMavenBaseUrl);
                 });
 
         @Nullable Reports reports = null;
@@ -488,7 +446,6 @@ public final class Main implements Callable<Integer> {
                 .mappings(mappings)
                 .paramMappings(paramMappings)
                 .unpickDefinitions(unpickDefinitions)
-                .constantsJar(constantJar)
                 .outputJar(this.outputJar)
                 .overwrite(this.forceWrite)
                 .input(input)

@@ -141,13 +141,6 @@ public abstract class CodeBookPage {
     @Qualifier
     @Target(ElementType.PARAMETER)
     @Retention(RetentionPolicy.RUNTIME)
-    public @interface ConstantsJar {
-        Key<Path> KEY = Key.get(Path.class, ConstantsJar.class);
-    }
-
-    @Qualifier
-    @Target(ElementType.PARAMETER)
-    @Retention(RetentionPolicy.RUNTIME)
     public @interface TempDir {
         Key<Path> KEY = Key.get(Path.class, TempDir.class);
     }
