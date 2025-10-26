@@ -78,8 +78,8 @@ public final class CodeBook {
         final var book = List.of(
                 ExtractVanillaJarPage.class,
                 RemapJarPage.class,
-                UnpickPage.class,
                 InspectJarPage.class,
+                UnpickPage.class,
                 FixJarPage.class,
                 RemapLvtPage.class);
 
@@ -144,16 +144,13 @@ public final class CodeBook {
 
         final @Nullable Path unpickDefinitions;
         if (this.ctx.unpickDefinitions() != null) {
-            unpickDefinitions = this.ctx.unpickDefinitions().resolveResourceFile(tempDir);
+            if (this.ctx.unpickDefinitions().equals(this.ctx.paramMappings())) {
+                unpickDefinitions = paramMappingsFile;
+            } else {
+                unpickDefinitions = this.ctx.unpickDefinitions().resolveResourceFile(tempDir);
+            }
         } else {
             unpickDefinitions = null;
-        }
-
-        final @Nullable Path constantsJar;
-        if (this.ctx.constantsJar() != null) {
-            constantsJar = this.ctx.constantsJar().resolveResourceFile(tempDir);
-        } else {
-            constantsJar = null;
         }
 
         return new AbstractModule() {
@@ -175,12 +172,6 @@ public final class CodeBook {
                     this.bind(CodeBookPage.UnpickDefinitions.KEY).toInstance(unpickDefinitions);
                 } else {
                     this.bind(CodeBookPage.UnpickDefinitions.KEY).toProvider(Providers.of(null));
-                }
-
-                if (constantsJar != null) {
-                    this.bind(CodeBookPage.ConstantsJar.KEY).toInstance(constantsJar);
-                } else {
-                    this.bind(CodeBookPage.ConstantsJar.KEY).toProvider(Providers.of(null));
                 }
 
                 if (CodeBook.this.ctx.reports() != null) {

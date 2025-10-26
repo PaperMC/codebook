@@ -22,58 +22,176 @@
 
 package io.papermc.codebook.pages;
 
-import io.papermc.codebook.exceptions.UnexpectedException;
-import io.papermc.codebook.util.IOUtil;
+import daomephsta.unpick.api.ConstantUninliner;
+import daomephsta.unpick.api.classresolvers.ClassResolvers;
+import daomephsta.unpick.api.classresolvers.IClassResolver;
+import daomephsta.unpick.api.constantgroupers.ConstantGroupers;
+import daomephsta.unpick.constantmappers.datadriven.parser.v3.UnpickV3Reader;
+import daomephsta.unpick.constantmappers.datadriven.tree.ForwardingUnpickV3Visitor;
+import daomephsta.unpick.constantmappers.datadriven.tree.GroupDefinition;
+import daomephsta.unpick.constantmappers.datadriven.tree.expr.Expression;
+import daomephsta.unpick.constantmappers.datadriven.tree.expr.ExpressionVisitor;
+import daomephsta.unpick.constantmappers.datadriven.tree.expr.FieldExpression;
+import dev.denwav.hypo.asm.AsmClassData;
+import dev.denwav.hypo.core.HypoContext;
+import dev.denwav.hypo.model.data.ClassData;
 import jakarta.inject.Inject;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.objectweb.asm.tree.ClassNode;
 
-public final class UnpickPage extends CodeBookPage {
+public final class UnpickPage extends AsmProcessorPage {
 
-    private final Path inputJar;
     private final List<Path> classpath;
-    private final Path tempDir;
     private final @Nullable Path unpickDefinitions;
-    private final @Nullable Path constantsJar;
+    private @MonotonicNonNull ConstantUninliner uninliner;
 
     @Inject
     public UnpickPage(
-            @InputJar final Path inputJar,
+            @Hypo final HypoContext context,
             @ClasspathJars final List<Path> classpath,
-            @TempDir final Path tempDir,
-            @UnpickDefinitions final @Nullable Path unpickDefinitions,
-            @ConstantsJar final @Nullable Path constantsJar) {
-        this.inputJar = inputJar;
+            @UnpickDefinitions final @Nullable Path unpickDefinitions) {
+        super(context);
         this.classpath = classpath;
-        this.tempDir = tempDir;
         this.unpickDefinitions = unpickDefinitions;
-        this.constantsJar = constantsJar;
     }
 
+    @Override
     public void exec() {
-        if (this.unpickDefinitions == null || this.constantsJar == null) {
+        if (this.unpickDefinitions == null) {
             return;
         }
 
-        final Path outputJar = this.tempDir.resolve("unpicked.jar");
-
-        final var args = new ArrayList<String>();
-        args.addAll(List.of(
-                IOUtil.absolutePathString(this.inputJar),
-                IOUtil.absolutePathString(outputJar),
-                IOUtil.absolutePathString(this.unpickDefinitions),
-                IOUtil.absolutePathString(this.constantsJar)));
-        args.addAll(this.classpath.stream().map(IOUtil::absolutePathString).toList());
-
-        try {
-            daomephsta.unpick.cli.Main.main(args.toArray(new String[0]));
+        boolean isZip;
+        try (final ZipFile zf = new ZipFile(this.unpickDefinitions.toFile())) {
+            isZip = true;
+        } catch (final ZipException e) {
+            isZip = false;
         } catch (final IOException e) {
-            throw new UnexpectedException("Failed to run unpick", e);
+            throw new UncheckedIOException(e);
         }
 
-        this.bind(InputJar.KEY).to(outputJar);
+        final List<ZipFile> zips = new ArrayList<>();
+
+        if (isZip) {
+            try (final FileSystem definitionsFs = FileSystems.newFileSystem(this.unpickDefinitions)) {
+                final Path definitionsPath = definitionsFs.getPath("extras/definitions.unpick");
+                this.unpick(definitionsPath, zips);
+            } catch (final IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        } else {
+            try {
+                this.unpick(this.unpickDefinitions, zips);
+            } catch (final IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+    }
+
+    private void unpick(final Path definitionsPath, final List<ZipFile> zips) throws IOException {
+        IClassResolver classResolver = new IClassResolver() {
+            @Override
+            public @Nullable ClassNode resolveClass(final String internalName) {
+                try {
+                    final @Nullable ClassData cls =
+                            UnpickPage.this.context.getContextProvider().findClass(internalName);
+                    if (cls instanceof final AsmClassData asmClassData) {
+                        return asmClassData.getNode();
+                    }
+                } catch (final IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+                return null;
+            }
+        };
+
+        try (final BufferedReader definitionsReader = Files.newBufferedReader(definitionsPath)) {
+            for (final Path classpathJar : this.classpath) {
+                final ZipFile zip = new ZipFile(classpathJar.toFile());
+                zips.add(zip);
+                classResolver = classResolver.chain(ClassResolvers.jar(zip));
+            }
+
+            classResolver = classResolver.chain(ClassResolvers.classpath());
+
+            this.uninliner = ConstantUninliner.builder()
+                    .grouper(ConstantGroupers.dataDriven()
+                            .classResolver(classResolver)
+                            .mappingSource(visitor -> {
+                                try {
+                                    new UnpickV3Reader(definitionsReader)
+                                            .accept(new ForwardingUnpickV3Visitor(visitor) {
+                                                // Filter out any groups where all constants reference missing classes
+                                                // (client classes when applying to the server or outdated definitions)
+                                                @Override
+                                                public void visitGroupDefinition(
+                                                        final GroupDefinition groupDefinition) {
+                                                    final List<Expression> constants =
+                                                            new ArrayList<>(groupDefinition.constants());
+                                                    for (final Expression constant : groupDefinition.constants()) {
+                                                        constant.accept(new ExpressionVisitor() {
+                                                            @Override
+                                                            public void visitFieldExpression(
+                                                                    final FieldExpression fieldExpression) {
+                                                                try {
+                                                                    final @Nullable ClassData clsData = UnpickPage.this
+                                                                            .context
+                                                                            .getContextProvider()
+                                                                            .findClass(fieldExpression.className);
+                                                                    if (clsData == null) {
+                                                                        constants.remove(constant);
+                                                                    }
+                                                                } catch (final IOException e) {
+                                                                    throw new UncheckedIOException(e);
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+                                                    if (!constants.isEmpty()) {
+                                                        super.visitGroupDefinition(
+                                                                GroupDefinition.Builder.from(groupDefinition)
+                                                                        .setConstants(constants)
+                                                                        .build());
+                                                    }
+                                                }
+                                            });
+                                } catch (final IOException e) {
+                                    throw new UncheckedIOException(e);
+                                }
+                            })
+                            .build())
+                    .classResolver(classResolver)
+                    .build();
+
+            this.processClasses();
+        } finally {
+            for (final ZipFile zip : zips) {
+                try {
+                    zip.close();
+                } catch (final IOException e) {
+                    // Ignore
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void processClass(final AsmClassData classData) {
+        if (this.uninliner == null) {
+            return;
+        }
+        this.uninliner.transform(classData.getNode());
     }
 }

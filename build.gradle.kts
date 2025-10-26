@@ -21,7 +21,7 @@ dependencies {
     implementation(libs.bundles.asm)
 
     implementation(libs.unpick.format)
-    implementation(libs.unpick.cli)
+    implementation(libs.unpick)
 
     implementation(platform(libs.hypo.platform))
     implementation(libs.bundles.hypo.full)

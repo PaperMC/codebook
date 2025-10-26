@@ -28,69 +28,31 @@ import dev.denwav.hypo.asm.AsmFieldData;
 import dev.denwav.hypo.asm.AsmMethodData;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.hydrate.generic.HypoHydration;
-import dev.denwav.hypo.model.HypoModelUtil;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.ClassKind;
 import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.MethodData;
 import dev.denwav.hypo.model.data.Visibility;
-import io.papermc.codebook.exceptions.UnexpectedException;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 
-public final class FixJarPage extends CodeBookPage {
-
-    private final HypoContext context;
+public final class FixJarPage extends AsmProcessorPage {
 
     @Inject
     public FixJarPage(@Hypo final HypoContext context) {
-        this.context = context;
+        super(context);
     }
 
     @Override
-    public void exec() {
-        try {
-            this.fixJar();
-        } catch (final IOException e) {
-            throw new UnexpectedException("Failed to fix jar", e);
-        }
-    }
-
-    private void fixJar() throws IOException {
-        final var tasks = new ArrayList<Future<?>>();
-        for (final ClassData classData : this.context.getProvider().allClasses()) {
-            final var task = this.context.getExecutor().submit(() -> {
-                try {
-                    this.processClass((AsmClassData) classData);
-                } catch (final IOException e) {
-                    throw HypoModelUtil.rethrow(e);
-                }
-            });
-            tasks.add(task);
-        }
-
-        try {
-            for (final Future<?> task : tasks) {
-                task.get();
-            }
-        } catch (final ExecutionException e) {
-            throw new UnexpectedException("Failed to fix jar", e.getCause());
-        } catch (final InterruptedException e) {
-            throw new UnexpectedException("Jar fixing interrupted", e);
-        }
-    }
-
-    private void processClass(final AsmClassData classData) throws IOException {
+    protected void processClass(final AsmClassData classData) throws IOException {
         OverrideAnnotationAdder.addAnnotations(classData);
         EmptyRecordFixer.fixClass(classData);
         RecordFieldAccessFixer.fixClass(classData);
