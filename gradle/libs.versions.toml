@@ -40,7 +40,7 @@ asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
 asm-tree = { module = "org.ow2.asm:asm-tree", version.ref = "asm" }
 
 unpick-format = { module = "net.fabricmc.unpick:unpick-format-utils", version.ref = "unpick" }
-unpick-cli = { module = "net.fabricmc.unpick:unpick", version.ref = "unpick" }
+unpick = { module = "net.fabricmc.unpick:unpick", version.ref = "unpick" }
 
 hypo-platform = "dev.denwav.hypo:hypo-platform:2.3.0"
 hypo-model = { module = "dev.denwav.hypo:hypo-model" }
