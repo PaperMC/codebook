@@ -50,6 +50,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.objectweb.asm.ClassWriter;
 
 public final class CodeBook {
 
@@ -92,7 +93,7 @@ public final class CodeBook {
         final Path resultJar;
         try (context) {
             resultJar = tempDir.resolve("final_output.jar");
-            AsmOutputWriter.to(resultJar).write(context);
+            AsmOutputWriter.to(resultJar, $ -> ClassWriter.COMPUTE_MAXS).write(context);
         } catch (final Exception e) {
             throw new UnexpectedException("Failed to write output file", e);
         }
