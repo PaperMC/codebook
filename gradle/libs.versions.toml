@@ -7,7 +7,7 @@ lorenz = "0.5.7"
 unpick = "3.0.0-beta.13"
 asm = "9.9"
 feather = "1.1.0"
-recordBuilder = "37"
+recordBuilder = "51"
 
 junit = "6.0.0"
 mockito = "5.20.0"
