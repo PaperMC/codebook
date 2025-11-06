@@ -23,11 +23,9 @@
 package io.papermc.codebook.config;
 
 import io.papermc.codebook.mojangapi.MinecraftManifest;
-import io.papermc.codebook.mojangapi.MinecraftVersionDownload;
 import io.papermc.codebook.mojangapi.MinecraftVersionManifest;
 import io.papermc.codebook.util.Downloader;
 import java.nio.file.Path;
-import org.checkerframework.checker.nullness.qual.Nullable;
 
 public record CodeBookVersionInput(String mcVersion) implements CodeBookInput {
 
@@ -43,19 +41,5 @@ public record CodeBookVersionInput(String mcVersion) implements CodeBookInput {
         final Path targetJar = tempDir.resolve("download/server.jar");
         Downloader.downloadFile(versionManifest.serverDownload(), targetJar);
         return targetJar;
-    }
-
-    @Override
-    public CodeBookResource resolveMappings(final CodeBookContext ctx, final Path tempDir) {
-        final @Nullable CodeBookResource mappings = CodeBookInput.super.resolveMappings(ctx, tempDir);
-        if (mappings != null) {
-            return mappings;
-        }
-
-        final var manifest = MinecraftManifest.getManifest();
-        final var versionManifest = MinecraftVersionManifest.getManifestForVersion(manifest, this.mcVersion);
-
-        final MinecraftVersionDownload mappingsDownload = versionManifest.serverMappingsDownload();
-        return new CodeBookUriResource("server_mappings.txt", mappingsDownload.uri(), mappingsDownload.sha1());
     }
 }

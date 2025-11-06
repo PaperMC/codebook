@@ -32,7 +32,6 @@ import dev.denwav.hypo.core.HypoConfig;
 import dev.denwav.hypo.core.HypoContext;
 import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.config.CodeBookJarInput;
-import io.papermc.codebook.config.CodeBookResource;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.exceptions.UserErrorException;
 import io.papermc.codebook.pages.CodeBookPage;
@@ -104,11 +103,6 @@ public final class CodeBook {
     }
 
     private Module createInitialModule(final Path tempDir) {
-        final @Nullable CodeBookResource mappings = this.ctx.input().resolveMappings(this.ctx, tempDir);
-        if (mappings == null) {
-            throw new IllegalStateException("No mappings file could be determined for the given configuration");
-        }
-
         final Path inputJar = this.ctx.input().resolveInputFile(tempDir);
         final @Nullable List<Path> classpathJars;
         if (this.ctx.input() instanceof final CodeBookJarInput input) {
