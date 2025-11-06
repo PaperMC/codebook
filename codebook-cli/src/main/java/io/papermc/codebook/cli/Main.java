@@ -96,81 +96,6 @@ public final class Main implements Callable<Integer> {
         }
     }
 
-    @CommandLine.ArgGroup(
-            multiplicity = "1",
-            heading = "%n%nThe remapper must be an executable tiny-remapper jar. "
-                    + "This is the 'fat' classifier when downloading from Maven. It can be provided several different ways, the simplest being to just "
-                    + "specify the Maven coordinates (with no classifier).%n")
-    private RemapperOptions remapper;
-
-    static final class RemapperOptions {
-        @CommandLine.Option(
-                names = {"-r", "--remapper-coords"},
-                paramLabel = "<art-coords>",
-                description =
-                        "The Maven coordinates for the executable AutoRenamingTool jar to use for the remapping process.")
-        private @Nullable String remapperCoords;
-
-        @CommandLine.Option(
-                names = {"--remapper-file"},
-                paramLabel = "<art-file>",
-                description = "The executable AutoRenamingTool jar to use for the remapping process.")
-        private @Nullable Path remapperFile;
-
-        @CommandLine.Option(
-                names = "--remapper-uri",
-                paramLabel = "<art-uri>",
-                description =
-                        "A download URL for the executable AutoRenamingTool jar to use for the remapping process.")
-        private @Nullable URI remapperUri;
-    }
-
-    @CommandLine.ArgGroup(
-            heading =
-                    "%n%nMappings are required when not using the --mc-version option to automatically download a version. "
-                            + "They can still be optionally provided using one of the 2 mappings options below, "
-                            + "but one of either --mappings-file or --mappings-uri is required when using --input to manually specify a jar file.%n")
-    private @Nullable MappingsOptions mappings;
-
-    static final class MappingsOptions {
-        @CommandLine.Option(
-                names = {"-m", "--mappings-file"},
-                paramLabel = "<mappings-file>",
-                description = "The ProGuard mojmap mappings to use for base remapping.")
-        private @Nullable Path mappingsFile;
-
-        @CommandLine.Option(
-                names = "--mappings-uri",
-                paramLabel = "<mappings-uri>",
-                description = "A download URL for the ProGuard mojmap mappings to use for base remapping.")
-        private @Nullable URI mappingsUri;
-    }
-
-    @CommandLine.ArgGroup(
-            heading = "%n%nParameter mappings are always optional, and can be specified several different ways.%n")
-    private @Nullable ParamMappingsOptions paramMappings;
-
-    static final class ParamMappingsOptions {
-        @CommandLine.Option(
-                names = {"-p", "--params-coords"},
-                paramLabel = "<param-mappings-coords>",
-                description =
-                        "The Maven coordinates for TinyV2 mappings to use for parameter remapping. This is the preferred option, as it allows omitting other details.")
-        private @Nullable String paramsCoords;
-
-        @CommandLine.Option(
-                names = {"--params-file"},
-                paramLabel = "<param-mappings-file>",
-                description = "The TinyV2 mappings to use for parameter remapping.")
-        private @Nullable Path paramsFile;
-
-        @CommandLine.Option(
-                names = "--params-uri",
-                paramLabel = "<param-mappings-uri>",
-                description = "A download URL for the TinyV2 mappings to use for parameter remapping.")
-        private @Nullable URI paramsUri;
-    }
-
     @CommandLine.ArgGroup(exclusive = false)
     private @Nullable UnpickOptions unpick;
 
@@ -348,10 +273,6 @@ public final class Main implements Callable<Integer> {
     }
 
     private CodeBookContext createContext() {
-        if (this.remapper.remapperFile != null) {
-            this.verifyJarFile("Remapper", this.remapper.remapperFile);
-        }
-
         if (this.inputs.inputFile != null) {
             this.verifyJarFile("Input", this.inputs.inputFile.inputJar);
 
@@ -360,18 +281,6 @@ public final class Main implements Callable<Integer> {
                     this.verifyJarFile("Classpath", classpathJar);
                 }
             }
-        }
-
-        if (this.mappings == null && this.inputs.mcVersion == null) {
-            throw new UserErrorException("No base mappings file was provided, and no MC version was provided. "
-                    + "When not specifying an MC version, the base mappings file must be manually specified.");
-        }
-        if (this.mappings != null && this.mappings.mappingsFile != null) {
-            this.verifyFileExists("Mappings file", this.mappings.mappingsFile);
-        }
-
-        if (this.paramMappings != null && this.paramMappings.paramsFile != null) {
-            this.verifyFileExists("Param mappings file", this.paramMappings.paramsFile);
         }
 
         if (Files.isRegularFile(this.outputJar) && !this.forceWrite) {
@@ -389,26 +298,6 @@ public final class Main implements Callable<Integer> {
                     : this.inputs.inputFile.inputClasspath;
             input = new CodeBookJarInput(this.inputs.inputFile.inputJar, classpath);
         }
-
-        final @Nullable CodeBookResource remapper = this.getResource(
-                "AutoRenamingTool.jar",
-                this.remapper,
-                r -> r.remapperFile,
-                r -> r.remapperUri,
-                r -> new Coords(r.remapperCoords, "all", null, this.remapperMavenBaseUrl));
-        if (remapper == null) {
-            throw new UserErrorException("No remapper provided");
-        }
-
-        final @Nullable CodeBookResource mappings =
-                this.getResource("server_mappings.txt", this.mappings, m -> m.mappingsFile, m -> m.mappingsUri, null);
-
-        final @Nullable CodeBookResource paramMappings = this.getResource(
-                "parchment.zip",
-                this.paramMappings,
-                p -> p.paramsFile,
-                p -> p.paramsUri,
-                p -> new Coords(p.paramsCoords, null, "zip", this.paramsMavenBaseUrl));
 
         final @Nullable CodeBookResource unpickDefinitions = this.getResource(
                 "definitions.unpick",
@@ -442,9 +331,6 @@ public final class Main implements Callable<Integer> {
 
         return CodeBookContext.builder()
                 .tempDir(this.tempDir)
-                .remapperJar(remapper)
-                .mappings(mappings)
-                .paramMappings(paramMappings)
                 .unpickDefinitions(unpickDefinitions)
                 .outputJar(this.outputJar)
                 .overwrite(this.forceWrite)

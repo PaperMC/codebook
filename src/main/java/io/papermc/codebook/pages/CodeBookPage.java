@@ -41,7 +41,6 @@ import java.lang.annotation.Target;
 import java.nio.file.Path;
 import java.util.IdentityHashMap;
 import java.util.List;
-import org.cadixdev.lorenz.MappingSet;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public abstract class CodeBookPage {
@@ -98,13 +97,6 @@ public abstract class CodeBookPage {
     @Qualifier
     @Target(ElementType.PARAMETER)
     @Retention(RetentionPolicy.RUNTIME)
-    public @interface RemapperJar {
-        Key<List<Path>> KEY = Key.get(new TypeLiteral<>() {}, RemapperJar.class);
-    }
-
-    @Qualifier
-    @Target(ElementType.PARAMETER)
-    @Retention(RetentionPolicy.RUNTIME)
     public @interface InputJar {
         Key<Path> KEY = Key.get(Path.class, InputJar.class);
     }
@@ -114,21 +106,6 @@ public abstract class CodeBookPage {
     @Retention(RetentionPolicy.RUNTIME)
     public @interface ClasspathJars {
         Key<List<Path>> KEY = Key.get(new TypeLiteral<>() {}, ClasspathJars.class);
-    }
-
-    @Qualifier
-    @Target(ElementType.PARAMETER)
-    @Retention(RetentionPolicy.RUNTIME)
-    public @interface MojangMappings {
-        Key<Path> PATH_KEY = Key.get(Path.class, MojangMappings.class);
-    }
-
-    @Qualifier
-    @Target(ElementType.PARAMETER)
-    @Retention(RetentionPolicy.RUNTIME)
-    public @interface ParamMappings {
-        Key<Path> PATH_KEY = Key.get(Path.class, ParamMappings.class);
-        Key<MappingSet> KEY = Key.get(MappingSet.class, ParamMappings.class);
     }
 
     @Qualifier

@@ -30,18 +30,14 @@ import com.google.inject.util.Providers;
 import dev.denwav.hypo.asm.AsmOutputWriter;
 import dev.denwav.hypo.core.HypoConfig;
 import dev.denwav.hypo.core.HypoContext;
-import io.papermc.codebook.config.CodeBookClasspathResource;
 import io.papermc.codebook.config.CodeBookContext;
 import io.papermc.codebook.config.CodeBookJarInput;
-import io.papermc.codebook.config.CodeBookResource;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.exceptions.UserErrorException;
 import io.papermc.codebook.pages.CodeBookPage;
 import io.papermc.codebook.pages.ExtractVanillaJarPage;
 import io.papermc.codebook.pages.FixJarPage;
 import io.papermc.codebook.pages.InspectJarPage;
-import io.papermc.codebook.pages.RemapJarPage;
-import io.papermc.codebook.pages.RemapLvtPage;
 import io.papermc.codebook.pages.UnpickPage;
 import io.papermc.codebook.report.Reports;
 import io.papermc.codebook.util.IOUtil;
@@ -76,13 +72,7 @@ public final class CodeBook {
     private void exec(final Path tempDir) {
         this.deleteOutputFile();
 
-        final var book = List.of(
-                ExtractVanillaJarPage.class,
-                RemapJarPage.class,
-                InspectJarPage.class,
-                UnpickPage.class,
-                FixJarPage.class,
-                RemapLvtPage.class);
+        final var book = List.of(ExtractVanillaJarPage.class, InspectJarPage.class, UnpickPage.class, FixJarPage.class);
 
         Module module = this.createInitialModule(tempDir);
         for (final var page : book) {
@@ -113,11 +103,6 @@ public final class CodeBook {
     }
 
     private Module createInitialModule(final Path tempDir) {
-        final @Nullable CodeBookResource mappings = this.ctx.input().resolveMappings(this.ctx, tempDir);
-        if (mappings == null) {
-            throw new IllegalStateException("No mappings file could be determined for the given configuration");
-        }
-
         final Path inputJar = this.ctx.input().resolveInputFile(tempDir);
         final @Nullable List<Path> classpathJars;
         if (this.ctx.input() instanceof final CodeBookJarInput input) {
@@ -126,30 +111,9 @@ public final class CodeBook {
             classpathJars = null;
         }
 
-        final Path mappingsFile = mappings.resolveResourceFile(tempDir);
-        final @Nullable Path paramMappingsFile;
-        if (this.ctx.paramMappings() != null) {
-            paramMappingsFile = this.ctx.paramMappings().resolveResourceFile(tempDir);
-        } else {
-            paramMappingsFile = null;
-        }
-
-        final List<Path> remapperJars;
-        if (this.ctx.remapperJar() instanceof final CodeBookResource resource) {
-            remapperJars = List.of(resource.resolveResourceFile(tempDir));
-        } else if (this.ctx.remapperJar() instanceof final CodeBookClasspathResource resource) {
-            remapperJars = resource.jars();
-        } else {
-            throw new LinkageError();
-        }
-
         final @Nullable Path unpickDefinitions;
         if (this.ctx.unpickDefinitions() != null) {
-            if (this.ctx.unpickDefinitions().equals(this.ctx.paramMappings())) {
-                unpickDefinitions = paramMappingsFile;
-            } else {
-                unpickDefinitions = this.ctx.unpickDefinitions().resolveResourceFile(tempDir);
-            }
+            unpickDefinitions = this.ctx.unpickDefinitions().resolveResourceFile(tempDir);
         } else {
             unpickDefinitions = null;
         }
@@ -165,9 +129,6 @@ public final class CodeBook {
                     this.bind(CodeBookPage.ClasspathJars.KEY).toProvider(Providers.of(null));
                 }
                 this.bind(CodeBookPage.TempDir.KEY).toInstance(tempDir);
-                this.bind(CodeBookPage.MojangMappings.PATH_KEY).toInstance(mappingsFile);
-                this.bind(CodeBookPage.ParamMappings.PATH_KEY).toProvider(Providers.of(paramMappingsFile));
-                this.bind(CodeBookPage.RemapperJar.KEY).toInstance(remapperJars);
 
                 if (unpickDefinitions != null) {
                     this.bind(CodeBookPage.UnpickDefinitions.KEY).toInstance(unpickDefinitions);

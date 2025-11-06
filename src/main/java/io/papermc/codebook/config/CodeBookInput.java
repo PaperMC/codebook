@@ -23,7 +23,6 @@
 package io.papermc.codebook.config;
 
 import java.nio.file.Path;
-import org.checkerframework.checker.nullness.qual.Nullable;
 
 public sealed interface CodeBookInput permits CodeBookVersionInput, CodeBookJarInput {
 
@@ -36,13 +35,4 @@ public sealed interface CodeBookInput permits CodeBookVersionInput, CodeBookJarI
     }
 
     Path resolveInputFile(final Path tempDir);
-
-    // It's a bit odd for mappings to be here, but the MC version input can specify its own mappings
-    default @Nullable CodeBookResource resolveMappings(final CodeBookContext ctx, final Path tempDir) {
-        if (ctx.mappings() != null) {
-            return ctx.mappings();
-        }
-
-        return null;
-    }
 }
