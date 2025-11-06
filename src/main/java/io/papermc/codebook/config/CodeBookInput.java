@@ -39,10 +39,6 @@ public sealed interface CodeBookInput permits CodeBookVersionInput, CodeBookJarI
 
     // It's a bit odd for mappings to be here, but the MC version input can specify its own mappings
     default @Nullable CodeBookResource resolveMappings(final CodeBookContext ctx, final Path tempDir) {
-        if (ctx.mappings() != null) {
-            return ctx.mappings();
-        }
-
         return null;
     }
 }

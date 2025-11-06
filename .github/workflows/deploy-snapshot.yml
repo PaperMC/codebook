@@ -1,7 +1,7 @@
 name: Deploy Snapshot
 on:
   push:
-    branches: ['main']
+    branches: ['main', 'dev/v2']
     paths-ignore:
       - '.idea/**'
       - 'license.txt'
