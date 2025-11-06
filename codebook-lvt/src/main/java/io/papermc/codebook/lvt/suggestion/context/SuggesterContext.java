@@ -20,10 +20,9 @@
  * USA
  */
 
-package io.papermc.codebook.report;
+package io.papermc.codebook.lvt.suggestion.context;
 
-public enum ReportType {
-    MISSING_METHOD_LVT_SUGGESTION,
-    MISSING_METHOD_PARAM,
-    CHECK_CAST_WRAPS;
-}
+import dev.denwav.hypo.core.HypoContext;
+import io.papermc.codebook.lvt.LvtTypeSuggester;
+
+public record SuggesterContext(HypoContext hypoContext, LvtTypeSuggester typeSuggester) {}

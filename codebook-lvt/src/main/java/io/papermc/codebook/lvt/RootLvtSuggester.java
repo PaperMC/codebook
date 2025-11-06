@@ -44,18 +44,20 @@ import io.papermc.codebook.lvt.suggestion.SingleVerbBooleanSuggester;
 import io.papermc.codebook.lvt.suggestion.SingleVerbSuggester;
 import io.papermc.codebook.lvt.suggestion.StringSuggester;
 import io.papermc.codebook.lvt.suggestion.VerbPrefixBooleanSuggester;
+import io.papermc.codebook.lvt.suggestion.context.AssignmentContext;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.SuggesterContext;
 import io.papermc.codebook.lvt.suggestion.context.field.FieldCallContext;
 import io.papermc.codebook.lvt.suggestion.context.field.FieldInsnContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import io.papermc.codebook.lvt.suggestion.numbers.MthRandomSuggester;
 import io.papermc.codebook.lvt.suggestion.numbers.RandomSourceSuggester;
+import io.papermc.codebook.report.Reports;
 import io.papermc.codebook.report.type.MissingMethodLvtSuggestion;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -85,16 +87,21 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
             GenericSuggester.class);
 
     private final HypoContext hypoContext;
-    private final LvtTypeSuggester lvtTypeSuggester;
+    final LvtTypeSuggester lvtTypeSuggester;
     private final Injector injector;
     private final List<? extends LvtSuggester> suggesters;
+    private final InstructionUnwrapper unwrapper;
 
     public RootLvtSuggester(
-            final HypoContext hypoContext, final LvtTypeSuggester lvtTypeSuggester, final Injector reports) {
+            final HypoContext hypoContext,
+            final LvtTypeSuggester lvtTypeSuggester,
+            final Reports reports,
+            final Injector reportsInjector) {
         this.hypoContext = hypoContext;
         this.lvtTypeSuggester = lvtTypeSuggester;
-        this.injector = reports.createChildInjector(this);
+        this.injector = reportsInjector.createChildInjector(this);
         this.suggesters = SUGGESTERS.stream().map(this.injector::getInstance).toList();
+        this.unwrapper = new InstructionUnwrapper(reports, reportsInjector);
     }
 
     @Override
@@ -139,7 +146,8 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
         }
 
         if (assignmentNode != null) {
-            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(parent, assignmentNode);
+            final @Nullable String suggestedName = this.suggestNameFromFirstAssignment(
+                    ContainerContext.from(parent), new AssignmentContext(assignmentNode, lvt));
             if (suggestedName != null) {
                 return determineFinalName(suggestedName, scopedNames);
             }
@@ -172,50 +180,9 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
         }
     }
 
-    private static final Set<BoxMethod> BOX_METHODS = Set.of(
-            new BoxMethod("java/lang/Byte", "byteValue", "()B"),
-            new BoxMethod("java/lang/Short", "shortValue", "()S"),
-            new BoxMethod("java/lang/Integer", "intValue", "()I"),
-            new BoxMethod("java/lang/Long", "longValue", "()J"),
-            new BoxMethod("java/lang/Float", "floatValue", "()F"),
-            new BoxMethod("java/lang/Double", "doubleValue", "()D"),
-            new BoxMethod("java/lang/Boolean", "booleanValue", "()Z"),
-            new BoxMethod("java/lang/Character", "charValue", "()C"));
-    private static final Set<String> BOX_METHOD_NAMES =
-            BOX_METHODS.stream().map(BoxMethod::name).collect(Collectors.toUnmodifiableSet());
-
-    private record BoxMethod(String owner, String name, String desc) {
-        boolean is(final MethodInsnNode node) {
-            return this.owner.equals(node.owner)
-                    && this.name.equals(node.name)
-                    && this.desc.equals(node.desc)
-                    && !node.itf;
-        }
-    }
-
-    private @Nullable AbstractInsnNode walkBack(final VarInsnNode assignmentNode) {
-        AbstractInsnNode prev = assignmentNode.getPrevious();
-        if (prev != null) {
-            final int op = prev.getOpcode();
-            if (op == Opcodes.INVOKEVIRTUAL) {
-                final MethodInsnNode methodInsnNode = (MethodInsnNode) prev;
-                if (BOX_METHOD_NAMES.contains(methodInsnNode.name)
-                        && BOX_METHODS.stream().anyMatch(bm -> bm.is(methodInsnNode))) {
-                    prev = prev.getPrevious();
-                    if (prev != null && prev.getOpcode() == Opcodes.CHECKCAST) {
-                        return prev.getPrevious();
-                    }
-                    return prev;
-                }
-            }
-            return prev;
-        }
-        return null;
-    }
-
-    private @Nullable String suggestNameFromFirstAssignment(final MethodData parent, final VarInsnNode varInsn)
-            throws IOException {
-        final @Nullable AbstractInsnNode prev = this.walkBack(varInsn);
+    private @Nullable String suggestNameFromFirstAssignment(
+            final ContainerContext container, final AssignmentContext assignment) throws IOException {
+        final @Nullable AbstractInsnNode prev = this.unwrapper.unwrapFromAssignment(assignment.assignmentNode());
         if (prev == null) {
             return null;
         }
@@ -236,36 +203,49 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
             return null;
         }
 
-        return this.suggestFromMethod(
+        final @Nullable String suggestion = this.suggestFromMethod(
                 MethodCallContext.create(method),
                 MethodInsnContext.create(owner, methodInsnNode),
-                ContainerContext.from(parent));
+                container,
+                assignment,
+                new SuggesterContext(this.hypoContext, this.lvtTypeSuggester));
+        if (suggestion == null) {
+            this.injector
+                    .getInstance(MissingMethodLvtSuggestion.class)
+                    .reportMissingMethodLvtSuggestion(method, methodInsnNode);
+        }
+        return suggestion;
     }
 
     @Override
     public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
+            final MethodCallContext call,
+            final MethodInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester)
             throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {
-            suggestion = delegate.suggestFromMethod(call, insn, container);
+            suggestion = delegate.suggestFromMethod(call, insn, container, assignment, suggester);
             if (suggestion != null) {
                 return suggestion;
             }
         }
-        this.injector
-                .getInstance(MissingMethodLvtSuggestion.class)
-                .reportMissingMethodLvtSuggestion(call.data(), insn.node());
         return null;
     }
 
     @Override
     public @Nullable String suggestFromField(
-            final FieldCallContext call, final FieldInsnContext insn, final ContainerContext container)
+            final FieldCallContext call,
+            final FieldInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester)
             throws IOException {
         @Nullable String suggestion;
         for (final LvtSuggester delegate : this.suggesters) {
-            suggestion = delegate.suggestFromField(call, insn, container);
+            suggestion = delegate.suggestFromField(call, insn, container, assignment, suggester);
             if (suggestion != null) {
                 return suggestion;
             }

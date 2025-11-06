@@ -70,7 +70,8 @@ public class LvtNamer {
         this.lvtTypeSuggester = new LvtTypeSuggester(context);
         this.reports = reports;
         this.reportsInjector = Guice.createInjector(reports);
-        this.lvtAssignSuggester = new RootLvtSuggester(context, this.lvtTypeSuggester, this.reportsInjector);
+        this.lvtAssignSuggester =
+                new RootLvtSuggester(context, this.lvtTypeSuggester, this.reports, this.reportsInjector);
     }
 
     public void processClass(final AsmClassData classData) throws IOException {
