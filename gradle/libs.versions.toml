@@ -25,7 +25,7 @@ checker = "org.checkerframework:checker-qual:3.51.1"
 picocli = "info.picocli:picocli:4.7.4"
 slf4j = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-jul = { module = "org.slf4j:jul-to-slf4j", version.ref = "slf4j" }
-logback = "ch.qos.logback:logback-classic:1.4.8"
+logback = "ch.qos.logback:logback-classic:1.5.21"
 sysoutOverSlf4j = "uk.org.lidalia:sysout-over-slf4j:1.0.2"
 
 guice = "com.google.inject:guice:7.0.0"
