@@ -9,7 +9,7 @@ asm = "9.9"
 feather = "1.1.0"
 recordBuilder = "37"
 
-junit = "6.0.0"
+junit = "6.0.1"
 mockito = "5.20.0"
 
 [plugins]
