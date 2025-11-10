@@ -30,7 +30,7 @@ sysoutOverSlf4j = "uk.org.lidalia:sysout-over-slf4j:1.0.2"
 
 guice = "com.google.inject:guice:7.0.0"
 inject = "jakarta.inject:jakarta.inject-api:2.0.1"
-guava = "com.google.guava:guava:32.1.2-jre"
+guava = "com.google.guava:guava:32.1.3-jre"
 
 gson = "com.google.code.gson:gson:2.13.2"
 bytes = "at.favre.lib:bytes:1.6.1"
