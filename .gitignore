@@ -7,10 +7,7 @@ build/
 ### IntelliJ IDEA ###
 .idea/**
 # Need to first allow the directory
-!.idea/inspectionProfiles/
 # Then the specific file
-!.idea/inspectionProfiles/Project_Default.xml
-!.idea/misc.xml
 *.iws
 *.iml
 *.ipr
@@ -45,3 +42,4 @@ bin/
 .DS_Store
 
 run/
+.kotlin/
