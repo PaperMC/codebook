@@ -38,6 +38,7 @@ import io.papermc.codebook.pages.CodeBookPage;
 import io.papermc.codebook.pages.ExtractVanillaJarPage;
 import io.papermc.codebook.pages.FixJarPage;
 import io.papermc.codebook.pages.InspectJarPage;
+import io.papermc.codebook.pages.StripSignaturesPage;
 import io.papermc.codebook.pages.UnpickPage;
 import io.papermc.codebook.report.Reports;
 import io.papermc.codebook.util.IOUtil;
@@ -72,7 +73,12 @@ public final class CodeBook {
     private void exec(final Path tempDir) {
         this.deleteOutputFile();
 
-        final var book = List.of(ExtractVanillaJarPage.class, InspectJarPage.class, UnpickPage.class, FixJarPage.class);
+        final var book = List.of(
+                ExtractVanillaJarPage.class,
+                StripSignaturesPage.class,
+                InspectJarPage.class,
+                UnpickPage.class,
+                FixJarPage.class);
 
         Module module = this.createInitialModule(tempDir);
         for (final var page : book) {
