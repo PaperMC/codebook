@@ -72,6 +72,7 @@ public final class CodeBook {
 
     private void exec(final Path tempDir) {
         this.deleteOutputFile();
+        IOUtil.createDirectories(tempDir);
 
         final var book = List.of(
                 ExtractVanillaJarPage.class,
