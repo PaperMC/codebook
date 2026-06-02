@@ -5,7 +5,7 @@ indra = "4.0.0"
 slf4j = "2.0.7"
 lorenz = "0.5.7"
 unpick = "3.0.0-SNAPSHOT"
-asm = "9.9"
+asm = "9.10.1"
 feather = "1.1.0"
 recordBuilder = "37"
 
