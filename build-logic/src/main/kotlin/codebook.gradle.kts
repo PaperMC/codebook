@@ -30,6 +30,9 @@ repositories {
             includeGroupAndSubgroups("net.fabricmc")
         }
     }
+    maven("https://repo.papermc.io/repository/maven-snapshots/") {
+        mavenContent { snapshotsOnly() }
+    }
 }
 
 java {
