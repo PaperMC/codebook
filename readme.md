@@ -96,7 +96,7 @@ There are 2 methods of providing inputs, and they are mutually exclusive:
 Building
 ========
 
-Java 17 is required.
+Java 21 is required.
 
 ```sh
 ./gradlew build
