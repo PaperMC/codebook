@@ -23,8 +23,11 @@
 package io.papermc.codebook.lvt.suggestion;
 
 import static io.papermc.codebook.lvt.LvtUtil.staticFinalFieldNameToLocalName;
+import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
+import io.papermc.codebook.lvt.suggestion.context.AssignmentContext;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
+import io.papermc.codebook.lvt.suggestion.context.SuggesterContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
 import java.io.IOException;
@@ -49,16 +52,39 @@ public class ComplexGetSuggester implements LvtSuggester {
                     "getValue", "(Lnet/minecraft/world/level/block/state/properties/Property;)Ljava/lang/Comparable;")),
             Set.of(
                     "Lnet/minecraft/world/level/block/state/properties/IntegerProperty;",
-                    "Lnet/minecraft/world/level/block/state/properties/BooleanProperty;"),
+                    "Lnet/minecraft/world/level/block/state/properties/BooleanProperty;",
+                    "Lnet/minecraft/world/level/block/state/properties/EnumProperty;",
+                    "Lnet/minecraft/world/level/block/state/properties/DirectionProperty;"),
             "Value");
+
+    private static final StaticFieldEntry LOOT_CONTEXT_PARAM = new StaticFieldEntry(
+            Set.of(
+                    "net/minecraft/world/level/storage/loot/LootContext",
+                    "net/minecraft/world/level/storage/loot/LootParams$Builder"),
+            Set.of(
+                    Map.entry(
+                            "getParamOrNull",
+                            "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;"),
+                    Map.entry(
+                            "getOptionalParameter",
+                            "(Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;)Ljava/lang/Object;")),
+            Set.of("Lnet/minecraft/world/level/storage/loot/parameters/LootContextParam;"),
+            "Param");
 
     @Override
     public @Nullable String suggestFromMethod(
-            final MethodCallContext call, final MethodInsnContext insn, final ContainerContext container)
+            final MethodCallContext call,
+            final MethodInsnContext insn,
+            final ContainerContext container,
+            final AssignmentContext assignment,
+            final SuggesterContext suggester)
             throws IOException {
         final MethodInsnNode node = insn.node();
         if (BLOCK_STATE_PROPERTY.test(node)) {
-            return BLOCK_STATE_PROPERTY.transform(node);
+            return BLOCK_STATE_PROPERTY.transform(node, assignment, suggester);
+        }
+        if (LOOT_CONTEXT_PARAM.test(node)) {
+            return LOOT_CONTEXT_PARAM.transform(node, assignment, suggester);
         }
         return null;
     }
@@ -67,21 +93,29 @@ public class ComplexGetSuggester implements LvtSuggester {
             Set<String> owners, Set<Entry<String, String>> methods, Set<String> fieldTypes, @Nullable String suffix) {
 
         boolean test(final MethodInsnNode node) {
-            return this.owners.contains(node.owner)
-                    && this.methods.stream()
-                            .anyMatch(e ->
-                                    e.getKey().equals(node.name) && e.getValue().equals(node.desc));
+            return matches(this.owners, this.methods, node);
         }
 
-        @Nullable
-        String transform(final MethodInsnNode node) {
+        String transform(
+                final MethodInsnNode node, final AssignmentContext assignment, final SuggesterContext suggester)
+                throws IOException {
             final AbstractInsnNode prev = node.getPrevious();
             if (prev instanceof final FieldInsnNode fieldInsnNode
                     && fieldInsnNode.getOpcode() == Opcodes.GETSTATIC
                     && this.fieldTypes.contains(fieldInsnNode.desc)) {
                 return staticFinalFieldNameToLocalName(fieldInsnNode.name) + (this.suffix == null ? "" : this.suffix);
             }
-            return null;
+            // always use the type instead of any other suggesters
+            return suggester.typeSuggester().suggestNameFromType(toJvmType(assignment.lvt().desc))
+                    + (this.suffix == null ? "" : this.suffix);
         }
+    }
+
+    private static boolean matches(
+            final Set<String> owners, final Set<Entry<String, String>> methods, final MethodInsnNode node) {
+        return owners.contains(node.owner)
+                && methods.stream()
+                        .anyMatch(e ->
+                                e.getKey().equals(node.name) && e.getValue().equals(node.desc));
     }
 }
