@@ -28,8 +28,8 @@ import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.MemberData;
-import dev.denwav.hypo.model.data.types.JvmType;
-import dev.denwav.hypo.model.data.types.PrimitiveType;
+import dev.denwav.hypo.types.PrimitiveType;
+import dev.denwav.hypo.types.desc.TypeDescriptor;
 import io.papermc.codebook.lvt.LvtTypeSuggester;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
@@ -73,11 +73,11 @@ public class SingleVerbBooleanSuggester implements LvtSuggester {
             return null;
         }
 
-        final List<JvmType> paramTypes = call.data().params();
+        final List<? extends TypeDescriptor> paramTypes = call.data().params();
         if (paramTypes.size() != 1) {
             return null;
         }
-        final String paramTypeDesc = paramTypes.get(0).asInternalName();
+        final String paramTypeDesc = paramTypes.get(0).asInternal();
 
         final AbstractInsnNode prev = insn.node().getPrevious();
         if (prev instanceof final FieldInsnNode fieldInsnNode

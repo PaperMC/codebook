@@ -64,7 +64,10 @@ public class ComplexGetSuggester implements LvtSuggester {
     }
 
     private record StaticFieldEntry(
-            Set<String> owners, Set<Entry<String, String>> methods, Set<String> fieldTypes, @Nullable String suffix) {
+            Set<String> owners,
+            Set<Entry<String, String>> methods,
+            Set<String> fieldTypes,
+            @Nullable String suffix) {
 
         boolean test(final MethodInsnNode node) {
             return this.owners.contains(node.owner)

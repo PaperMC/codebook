@@ -26,8 +26,8 @@ import static io.papermc.codebook.lvt.suggestion.numbers.RandomUtil.createNextRa
 
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.ClassData;
-import dev.denwav.hypo.model.data.types.ClassType;
-import dev.denwav.hypo.model.data.types.JvmType;
+import dev.denwav.hypo.types.desc.ClassTypeDescriptor;
+import dev.denwav.hypo.types.desc.TypeDescriptor;
 import io.papermc.codebook.lvt.suggestion.LvtSuggester;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
@@ -39,7 +39,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 // primitive methods in RandomSource
 public class RandomSourceSuggester implements LvtSuggester {
 
-    static final JvmType RANDOM_SOURCE_TYPE = new ClassType("net/minecraft/util/RandomSource");
+    static final TypeDescriptor RANDOM_SOURCE_TYPE = ClassTypeDescriptor.of("net/minecraft/util/RandomSource");
 
     private final @Nullable ClassData randomSourceClass;
 

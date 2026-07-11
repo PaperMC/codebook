@@ -34,8 +34,8 @@ import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.FieldData;
 import dev.denwav.hypo.model.data.HypoKey;
 import dev.denwav.hypo.model.data.MethodData;
-import dev.denwav.hypo.model.data.types.JvmType;
-import dev.denwav.hypo.model.data.types.PrimitiveType;
+import dev.denwav.hypo.types.PrimitiveType;
+import dev.denwav.hypo.types.desc.TypeDescriptor;
 import io.papermc.codebook.report.ReportType;
 import io.papermc.codebook.report.Reports;
 import io.papermc.codebook.report.type.MissingMethodParam;
@@ -208,7 +208,8 @@ public class LvtNamer {
         if (node.localVariables == null) {
             // interface / abstract methods don't have LVT
             // But we still need to set param names
-            final List<JvmType> paramTypes = method.descriptor().getParams();
+            final List<? extends TypeDescriptor> paramTypes =
+                    method.descriptor().getParameters();
             final int paramCount = paramTypes.size();
 
             if (node.parameters == null) {
@@ -468,7 +469,7 @@ public class LvtNamer {
         int currentIndex = 0;
         int currentLvtIndex = method.isStatic() ? 0 : 1;
 
-        for (final JvmType param : method.params()) {
+        for (final TypeDescriptor param : method.params()) {
             if (currentLvtIndex == lvtIndex) {
                 return currentIndex;
             }
@@ -490,7 +491,7 @@ public class LvtNamer {
         int currentLvtIndex = method.isStatic() ? 0 : 1;
         int currentParamIndex = 0;
 
-        for (final JvmType param : method.params()) {
+        for (final TypeDescriptor param : method.params()) {
             if (currentParamIndex == paramIndex) {
                 return currentLvtIndex;
             }
