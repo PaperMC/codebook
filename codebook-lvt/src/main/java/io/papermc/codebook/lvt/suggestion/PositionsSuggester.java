@@ -28,7 +28,7 @@ import static io.papermc.codebook.lvt.LvtUtil.prevInsnIgnoringConvertCast;
 import static java.util.Objects.requireNonNull;
 
 import dev.denwav.hypo.model.data.MethodData;
-import dev.denwav.hypo.model.data.types.PrimitiveType;
+import dev.denwav.hypo.types.PrimitiveType;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;

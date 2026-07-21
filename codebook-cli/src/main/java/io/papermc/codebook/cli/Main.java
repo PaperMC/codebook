@@ -371,7 +371,10 @@ public final class Main implements Callable<Integer> {
     }
 
     private record Coords(
-            @Nullable String coords, @Nullable String classifier, @Nullable String extension, String baseUrl) {}
+            @Nullable String coords,
+            @Nullable String classifier,
+            @Nullable String extension,
+            String baseUrl) {}
 
     private void verifyFileExists(final String name, final Path file) {
         if (!Files.isRegularFile(file)) {

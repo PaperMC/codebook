@@ -42,8 +42,7 @@ public class StringSuggester implements LvtSuggester {
             }
         }
 
-        if (methodName.equals("repeat")
-                && call.data().returnType().asInternalName().equals("Ljava/lang/String;")) {
+        if (methodName.equals("repeat") && call.data().returnType().asInternal().equals("Ljava/lang/String;")) {
             return "repeated";
         }
         if (methodName.equals("indexOf") || methodName.equals("lastIndexOf")) {

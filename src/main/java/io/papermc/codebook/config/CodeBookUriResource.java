@@ -28,13 +28,13 @@ import io.soabase.recordbuilder.core.RecordBuilder;
 import java.net.URI;
 import java.nio.file.Path;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.jetbrains.annotations.NotNull;
 
 @RecordBuilder
 @RecordBuilder.Options(interpretNotNulls = true)
 public record CodeBookUriResource(
-        @NotNull String name, @NotNull URI uri, @Nullable @org.jetbrains.annotations.Nullable String sha1)
-        implements CodeBookResource, DownloadSpec {
+        String name,
+        URI uri,
+        @Nullable @org.jetbrains.annotations.Nullable String sha1) implements CodeBookResource, DownloadSpec {
 
     public static CodeBookUriResourceBuilder builder() {
         return CodeBookUriResourceBuilder.builder();

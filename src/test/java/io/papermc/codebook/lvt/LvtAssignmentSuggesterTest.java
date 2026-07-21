@@ -37,9 +37,9 @@ import dev.denwav.hypo.model.ClassDataProvider;
 import dev.denwav.hypo.model.HypoModelUtil;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.ClassKind;
-import dev.denwav.hypo.model.data.MethodDescriptor;
-import dev.denwav.hypo.model.data.types.ClassType;
-import dev.denwav.hypo.model.data.types.JvmType;
+import dev.denwav.hypo.types.desc.ClassTypeDescriptor;
+import dev.denwav.hypo.types.desc.MethodDescriptor;
+import dev.denwav.hypo.types.desc.TypeDescriptor;
 import io.papermc.codebook.lvt.suggestion.context.ContainerContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodCallContext;
 import io.papermc.codebook.lvt.suggestion.context.method.MethodInsnContext;
@@ -65,7 +65,7 @@ import org.objectweb.asm.tree.MethodNode;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class LvtAssignmentSuggesterTest {
 
-    static final JvmType RANDOM_SOURCE_TYPE = new ClassType("net/minecraft/util/RandomSource");
+    static final TypeDescriptor RANDOM_SOURCE_TYPE = ClassTypeDescriptor.of("net/minecraft/util/RandomSource");
 
     private static final MockSettings LENIENT = withSettings().strictness(Strictness.LENIENT);
     private RootLvtSuggester suggester;
@@ -97,9 +97,9 @@ class LvtAssignmentSuggesterTest {
         when(this.provider.findClass("java/util/Set")).thenReturn(this.setClass);
         when(this.provider.findClass("java/util/Map")).thenReturn(this.mapClass);
 
-        when(this.provider.findClass(RANDOM_SOURCE_TYPE.asInternalName())).thenReturn(this.randomSourceClass);
+        when(this.provider.findClass(RANDOM_SOURCE_TYPE.asInternal())).thenReturn(this.randomSourceClass);
 
-        when(this.randomSourceClass.name()).thenReturn(RANDOM_SOURCE_TYPE.asInternalName());
+        when(this.randomSourceClass.name()).thenReturn(RANDOM_SOURCE_TYPE.asInternal());
 
         this.suggester =
                 new RootLvtSuggester(context, new LvtTypeSuggester(context), Guice.createInjector(this.reports));
@@ -121,7 +121,7 @@ class LvtAssignmentSuggesterTest {
         when(owner.name()).thenReturn(methodOwner);
         when(method.name()).thenReturn(methodName);
 
-        final MethodDescriptor desc = MethodDescriptor.parseDescriptor(methodDescriptor);
+        final MethodDescriptor desc = MethodDescriptor.parse(methodDescriptor);
         when(method.descriptor()).thenReturn(desc);
 
         // params() and returnType() methods will defer to the descriptor
@@ -133,7 +133,7 @@ class LvtAssignmentSuggesterTest {
         node.instructions = new InsnList();
         when(method.getNode()).thenReturn(node);
 
-        if (methodOwner.equals(HypoModelUtil.normalizedClassName(RANDOM_SOURCE_TYPE.asInternalName()))) {
+        if (methodOwner.equals(HypoModelUtil.normalizedClassName(RANDOM_SOURCE_TYPE.asInternal()))) {
             when(owner.doesExtendOrImplement(this.randomSourceClass)).thenReturn(true);
         } else {
             when(owner.doesExtendOrImplement(this.randomSourceClass)).thenReturn(false);

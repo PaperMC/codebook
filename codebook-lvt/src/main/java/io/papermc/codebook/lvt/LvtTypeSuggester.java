@@ -25,10 +25,10 @@ package io.papermc.codebook.lvt;
 import com.google.common.base.Splitter;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.ClassData;
-import dev.denwav.hypo.model.data.types.ArrayType;
-import dev.denwav.hypo.model.data.types.ClassType;
-import dev.denwav.hypo.model.data.types.JvmType;
-import dev.denwav.hypo.model.data.types.PrimitiveType;
+import dev.denwav.hypo.types.PrimitiveType;
+import dev.denwav.hypo.types.desc.ArrayTypeDescriptor;
+import dev.denwav.hypo.types.desc.ClassTypeDescriptor;
+import dev.denwav.hypo.types.desc.TypeDescriptor;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -54,45 +54,43 @@ public final class LvtTypeSuggester {
         this.mapClass = Objects.requireNonNull(map, "java/util/Map not found");
     }
 
-    public String suggestNameFromType(final JvmType type) throws IOException {
-        if (type instanceof PrimitiveType) {
-            return switch ((PrimitiveType) type) {
-                case CHAR -> "c";
-                case BYTE -> "b";
-                case SHORT -> "s";
-                case INT -> "i";
-                case LONG -> "l";
-                case FLOAT -> "f";
-                case DOUBLE -> "d";
-                case BOOLEAN -> "flag";
-                case VOID -> throw new IllegalStateException("Illegal local variable type: " + type);
-            };
-        } else if (type instanceof ClassType) {
-            return this.suggestNameFromClassType((ClassType) type);
-        } else if (type instanceof ArrayType) {
-            final JvmType baseType = ((ArrayType) type).baseType();
-            if (baseType instanceof PrimitiveType) {
-                return switch (((PrimitiveType) baseType)) {
-                    case CHAR -> "chars";
-                    case BYTE -> "bytes";
-                    case SHORT -> "shorts";
-                    case INT -> "ints";
-                    case LONG -> "longs";
-                    case FLOAT -> "floats";
-                    case DOUBLE -> "doubles";
-                    case BOOLEAN -> "flags";
-                    case VOID -> throw new IllegalStateException("Illegal local variable type: " + type);
+    public String suggestNameFromType(final TypeDescriptor type) throws IOException {
+        return switch (type) {
+            case final PrimitiveType primitiveType ->
+                switch (primitiveType) {
+                    case CHAR -> "c";
+                    case BYTE -> "b";
+                    case SHORT -> "s";
+                    case INT -> "i";
+                    case LONG -> "l";
+                    case FLOAT -> "f";
+                    case DOUBLE -> "d";
+                    case BOOLEAN -> "flag";
                 };
-            } else {
-                return this.suggestNameFromType(baseType) + "s";
+            case final ClassTypeDescriptor classType -> this.suggestNameFromClassType(classType);
+            case final ArrayTypeDescriptor arrayType -> {
+                final TypeDescriptor baseType = arrayType.getBaseType();
+                if (baseType instanceof PrimitiveType) {
+                    yield switch (((PrimitiveType) baseType)) {
+                        case CHAR -> "chars";
+                        case BYTE -> "bytes";
+                        case SHORT -> "shorts";
+                        case INT -> "ints";
+                        case LONG -> "longs";
+                        case FLOAT -> "floats";
+                        case DOUBLE -> "doubles";
+                        case BOOLEAN -> "flags";
+                    };
+                } else {
+                    yield this.suggestNameFromType(baseType) + "s";
+                }
             }
-        } else {
-            throw new IllegalStateException("Unknown type: " + type);
-        }
+            case null, default -> throw new IllegalStateException("Unknown type: " + type);
+        };
     }
 
-    private String suggestNameFromClassType(final ClassType type) throws IOException {
-        final String name = type.asInternalName();
+    private String suggestNameFromClassType(final ClassTypeDescriptor type) throws IOException {
+        final String name = type.asInternal();
         if (name.equals("Ljava/lang/String;")) {
             return "string";
         }

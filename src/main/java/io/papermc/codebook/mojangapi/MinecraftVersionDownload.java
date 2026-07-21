@@ -26,4 +26,5 @@ import com.google.gson.annotations.SerializedName;
 import io.papermc.codebook.util.DownloadSpec;
 import java.net.URI;
 
-public record MinecraftVersionDownload(String sha1, @SerializedName("url") URI uri) implements DownloadSpec {}
+public record MinecraftVersionDownload(
+        String sha1, @SerializedName("url") URI uri) implements DownloadSpec {}

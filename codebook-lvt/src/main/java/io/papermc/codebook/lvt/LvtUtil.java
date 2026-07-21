@@ -23,7 +23,7 @@
 package io.papermc.codebook.lvt;
 
 import dev.denwav.hypo.asm.HypoAsmUtil;
-import dev.denwav.hypo.model.data.types.JvmType;
+import dev.denwav.hypo.types.desc.TypeDescriptor;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Predicate;
@@ -36,7 +36,7 @@ public final class LvtUtil {
 
     private LvtUtil() {}
 
-    public static JvmType toJvmType(final String desc) {
+    public static TypeDescriptor toJvmType(final String desc) {
         return HypoAsmUtil.toJvmType(Type.getType(desc));
     }
 

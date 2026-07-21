@@ -22,7 +22,6 @@
 
 package io.papermc.codebook.lvt;
 
-import static dev.denwav.hypo.model.data.MethodDescriptor.parseDescriptor;
 import static io.papermc.codebook.lvt.LvtUtil.toJvmType;
 
 import com.google.inject.AbstractModule;
@@ -30,8 +29,8 @@ import com.google.inject.Injector;
 import dev.denwav.hypo.core.HypoContext;
 import dev.denwav.hypo.model.data.ClassData;
 import dev.denwav.hypo.model.data.MethodData;
-import dev.denwav.hypo.model.data.MethodDescriptor;
-import dev.denwav.hypo.model.data.types.JvmType;
+import dev.denwav.hypo.types.desc.MethodDescriptor;
+import dev.denwav.hypo.types.desc.TypeDescriptor;
 import io.papermc.codebook.lvt.suggestion.ComplexGetSuggester;
 import io.papermc.codebook.lvt.suggestion.FluentGetterSuggester;
 import io.papermc.codebook.lvt.suggestion.GenericSuggester;
@@ -146,7 +145,7 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
         }
 
         // we couldn't determine a name from the assignment, so determine a name from the type
-        final JvmType lvtType = toJvmType(lvt.desc);
+        final TypeDescriptor lvtType = toJvmType(lvt.desc);
         return determineFinalName(this.lvtTypeSuggester.suggestNameFromType(lvtType), scopedNames);
     }
 
@@ -231,7 +230,7 @@ public final class RootLvtSuggester extends AbstractModule implements LvtSuggest
             return null;
         }
         final @Nullable MethodData method =
-                findMethod(owner, methodInsnNode.name, parseDescriptor(methodInsnNode.desc));
+                findMethod(owner, methodInsnNode.name, MethodDescriptor.parse(methodInsnNode.desc));
         if (method == null) {
             return null;
         }

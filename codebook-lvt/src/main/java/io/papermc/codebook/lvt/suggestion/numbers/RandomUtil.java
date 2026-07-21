@@ -26,7 +26,7 @@ import static io.papermc.codebook.lvt.LvtUtil.equalsAny;
 import static io.papermc.codebook.lvt.LvtUtil.findNextWord;
 
 import dev.denwav.hypo.model.data.MethodData;
-import dev.denwav.hypo.model.data.types.PrimitiveType;
+import dev.denwav.hypo.types.PrimitiveType;
 import java.util.function.Predicate;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
