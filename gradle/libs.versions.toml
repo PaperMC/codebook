@@ -2,7 +2,7 @@
 spotless = "8.8.0"
 palantir = "2.96.0"
 indra = "4.0.0"
-slf4j = "2.0.7"
+slf4j = "2.0.19"
 lorenz = "0.5.7"
 unpick = "3.0.0"
 asm = "9.9"
