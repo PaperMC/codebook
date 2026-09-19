@@ -111,3 +111,5 @@ License
 =======
 
 [LGPL-3.0-only](license.txt)
+
+<img src="https://papermc.io/assets/misc/namespace-oss-badge.svg?project=codebook" alt="CI powered by namespace badge" />
