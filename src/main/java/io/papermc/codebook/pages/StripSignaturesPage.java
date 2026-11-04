@@ -25,22 +25,21 @@ package io.papermc.codebook.pages;
 import io.papermc.codebook.exceptions.UnexpectedException;
 import io.papermc.codebook.util.IOUtil;
 import jakarta.inject.Inject;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class StripSignaturesPage extends CodeBookPage {
 
-    private static final Map<String, String> CREATE_FS_ARGS = Map.of("create", "true");
     private static final String DIGEST_SUFFIX = "-digest";
     private static final int DIGEST_SUFFIX_LENGTH = DIGEST_SUFFIX.length();
 
@@ -55,18 +54,19 @@ public final class StripSignaturesPage extends CodeBookPage {
 
     @Override
     public void exec() {
-        try (final FileSystem inputFs = FileSystems.newFileSystem(this.inputJar)) {
-            final Path inputRoot = inputFs.getPath("/");
-            final @Nullable Manifest strippedManifest = stripManifestDigestEntries(inputRoot);
-            if (strippedManifest == null && !containsSignatureFiles(inputRoot)) {
+        try (final ZipFile inputZip = new ZipFile(this.inputJar.toFile())) {
+            final @Nullable Manifest strippedManifest = stripManifestDigestEntries(inputZip);
+            if (strippedManifest == null && !containsSignatureFiles(inputZip)) {
                 return;
             }
 
             final Path strippedJar = this.tempDir.resolve("unsigned-" + this.inputJar.getFileName());
             IOUtil.deleteIfExists(strippedJar);
 
-            try (final FileSystem outputFs = FileSystems.newFileSystem(strippedJar, CREATE_FS_ARGS)) {
-                copyContents(inputRoot, outputFs.getPath("/"), strippedManifest);
+            try (final ZipOutputStream outputZip =
+                    new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(strippedJar)))) {
+                outputZip.setComment(inputZip.getComment());
+                copyContents(inputZip, outputZip, strippedManifest);
             }
 
             this.bind(InputJar.KEY).to(strippedJar);
@@ -75,49 +75,47 @@ public final class StripSignaturesPage extends CodeBookPage {
         }
     }
 
-    private static boolean containsSignatureFiles(final Path inputRoot) throws IOException {
-        try (final var paths = Files.walk(inputRoot)) {
-            for (final Path path : (Iterable<Path>) paths::iterator) {
-                if (isSignatureFile(pathName(inputRoot.relativize(path)))) {
-                    return true;
-                }
-            }
-        }
-        return false;
+    private static boolean containsSignatureFiles(final ZipFile inputZip) {
+        return inputZip.stream().anyMatch(entry -> isSignatureFile(entry.getName()));
     }
 
     private static void copyContents(
-            final Path inputRoot, final Path outputRoot, final @Nullable Manifest strippedManifest) throws IOException {
-        try (final var paths = Files.walk(inputRoot)) {
-            for (final Path sourcePath : (Iterable<Path>) paths::iterator) {
-                final Path relativePath = inputRoot.relativize(sourcePath);
-                final String entryName = pathName(relativePath);
-                if (entryName.isEmpty() || isSignatureFile(entryName)) {
-                    continue;
-                }
+            final ZipFile inputZip, final ZipOutputStream outputZip, final @Nullable Manifest strippedManifest)
+            throws IOException {
+        final var entries = inputZip.entries();
+        while (entries.hasMoreElements()) {
+            final ZipEntry entry = entries.nextElement();
+            if (isSignatureFile(entry.getName())) {
+                continue;
+            }
 
-                final Path outputPath = outputRoot.resolve(relativePath.toString());
-                if (Files.isDirectory(sourcePath)) {
-                    Files.createDirectories(outputPath);
-                } else if (strippedManifest != null && isManifestFile(entryName)) {
-                    IOUtil.createParentDirectories(outputPath);
-                    writeManifest(outputPath, strippedManifest);
-                } else {
-                    IOUtil.createParentDirectories(outputPath);
-                    Files.copy(sourcePath, outputPath);
+            final boolean rewriteManifest = strippedManifest != null && isManifestFile(entry.getName());
+            final ZipEntry outputEntry = new ZipEntry(entry);
+            if (outputEntry.getMethod() == ZipEntry.DEFLATED || rewriteManifest) {
+                // Recalculate compression metadata, including for a previously STORED manifest.
+                outputEntry.setMethod(ZipEntry.DEFLATED);
+                outputEntry.setCompressedSize(-1);
+            }
+            outputZip.putNextEntry(outputEntry);
+            if (rewriteManifest) {
+                strippedManifest.write(outputZip);
+            } else {
+                try (final InputStream input = inputZip.getInputStream(entry)) {
+                    input.transferTo(outputZip);
                 }
             }
+            outputZip.closeEntry();
         }
     }
 
-    private static @Nullable Manifest stripManifestDigestEntries(final Path inputRoot) throws IOException {
-        final Path manifestPath = inputRoot.resolve("META-INF/MANIFEST.MF");
-        if (Files.notExists(manifestPath)) {
+    private static @Nullable Manifest stripManifestDigestEntries(final ZipFile inputZip) throws IOException {
+        final ZipEntry manifestEntry = inputZip.getEntry("META-INF/MANIFEST.MF");
+        if (manifestEntry == null) {
             return null;
         }
 
         final Manifest manifest;
-        try (final InputStream input = Files.newInputStream(manifestPath)) {
+        try (final InputStream input = inputZip.getInputStream(manifestEntry)) {
             manifest = new Manifest(input);
         }
 
@@ -154,15 +152,5 @@ public final class StripSignaturesPage extends CodeBookPage {
 
     private static boolean isManifestFile(final String entryName) {
         return entryName.equals("META-INF/MANIFEST.MF");
-    }
-
-    private static String pathName(final Path relativePath) {
-        return relativePath.toString().replace('\\', '/');
-    }
-
-    private static void writeManifest(final Path outputPath, final Manifest manifest) throws IOException {
-        try (final OutputStream output = Files.newOutputStream(outputPath)) {
-            manifest.write(output);
-        }
     }
 }
